@@ -5,14 +5,19 @@ on:
     - cron: '*/5 * * * *'   # каждые 5 минут
   workflow_dispatch:
 
+concurrency:
+  group: tg-media-processing
+  cancel-in-progress: true
+
 jobs:
   process:
     runs-on: ubuntu-latest
+
     steps:
       - name: Checkout repo
         uses: actions/checkout@v4
         with:
-          persist-credentials: false
+          persist-credentials: false   # важно для использования GITHUB_TOKEN
 
       - name: Install system deps (ffmpeg)
         run: |
@@ -33,8 +38,7 @@ jobs:
         env:
           BOT_TOKEN: ${{ secrets.BOT_TOKEN }}
           SRC_CHAT_ID: ${{ secrets.SRC_CHAT_ID }}
-        run: |
-          python bot_auto_run.py
+        run: python bot_auto_run.py
 
       - name: Commit records/state if changed
         run: |
@@ -46,4 +50,3 @@ jobs:
             git push https://x-access-token:${{ secrets.GITHUB_TOKEN }}@github.com/${{ github.repository }} HEAD:main
           else
             echo "No changes to commit"
-          fi
