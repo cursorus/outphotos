@@ -4,42 +4,111 @@
 <meta charset="utf-8">
 <title>TG Gallery</title>
 <style>
-body{font-family:Arial;padding:12px}
-.grid{display:grid;grid-template-columns:repeat(auto-fill,minmax(160px,1fr));gap:8px}
-.item img,.item video{width:100%;height:120px;object-fit:cover;border-radius:6px}
-.meta{font-size:12px;color:#333;margin-top:4px}
+body{
+    font-family: Arial;
+    padding: 16px;
+    background: #0d0d0d;
+    color: #fff;
+    margin: 0;
+}
+h2, h3{
+    text-align: center;
+    color: #fff;
+    margin: 20px 0 10px;
+    font-weight: 600;
+}
+.grid{
+    display: grid;
+    grid-template-columns: repeat(3, 1fr); /* ровно 3 элемента */
+    gap: 10px;
+    margin-bottom: 30px;
+}
+.item{
+    background: #1a1a1a;
+    border-radius: 8px;
+    padding: 6px;
+}
+.item img,
+.item video{
+    width: 100%;
+    height: 150px;
+    object-fit: cover;
+    border-radius: 6px;
+    display: block;
+}
+.meta{
+    font-size: 12px;
+    color: #ccc;
+    margin-top: 6px;
+    text-align: center;
+}
 </style>
 </head>
 <body>
-<h2>Gallery</h2>
+
+<h2>Сортированное</h2>
 <div id="sorted" class="grid"></div>
-<h3>Unsorted</h3>
+
+<h3>Несортированное</h3>
 <div id="unsorted" class="grid"></div>
 
 <script>
 async function load(){
-  const r = await fetch('records.json?'+Date.now());
-  const arr = await r.json();
-  const sorted = arr.filter(x=>x.created_at).sort((a,b)=>new Date(b.created_at)-new Date(a.created_at));
-  const unsorted = arr.filter(x=>!x.created_at);
-  const s = document.getElementById('sorted'), u = document.getElementById('unsorted');
-  s.innerHTML=''; u.innerHTML='';
-  function make(it){
-    const div=document.createElement('div'); div.className='item';
-    const src = `tg://file?file_id=${it.src_file_id}`;
-    if(it.type==='photo'){
-      const img=document.createElement('img'); img.src = src; div.appendChild(img);
-    } else {
-      const v=document.createElement('video'); v.src=src; v.muted=true; v.playsInline=true; v.controls=false; div.appendChild(v);
+  try{
+    const r = await fetch('records.json?'+Date.now());
+    if(!r.ok) { 
+      document.body.insertAdjacentHTML('beforeend','<p style="text-align:center;color:#777">records.json не найден</p>');
+      return;
     }
-    const meta=document.createElement('div'); meta.className='meta'; meta.textContent = it.created_at || 'no date';
-    div.appendChild(meta);
-    return div;
+    const arr = await r.json();
+
+    const sorted = arr
+      .filter(x=>x.created_at)
+      .sort((a,b)=>new Date(b.created_at)-new Date(a.created_at));
+
+    const unsorted = arr.filter(x=>!x.created_at);
+
+    const s = document.getElementById('sorted'),
+          u = document.getElementById('unsorted');
+
+    s.innerHTML=''; u.innerHTML='';
+
+    function box(it){
+      const div=document.createElement('div');
+      div.className='item';
+
+      const src=`tg://file?file_id=${it.src_file_id}`;
+
+      if(it.type==='photo'){
+        const img=document.createElement('img');
+        img.src=src;
+        div.appendChild(img);
+      }else{
+        const v=document.createElement('video');
+        v.src=src;
+        v.muted=true;
+        v.playsInline=true;
+        v.controls=false;
+        div.appendChild(v);
+      }
+
+      const meta=document.createElement('div');
+      meta.className='meta';
+      meta.textContent = it.created_at || 'нет даты';
+      div.appendChild(meta);
+
+      return div;
+    }
+
+    sorted.forEach(it => s.appendChild(box(it)));
+    unsorted.forEach(it => u.appendChild(box(it)));
+
+  }catch(e){
+    console.error(e);
   }
-  sorted.forEach(it=>s.appendChild(make(it)));
-  unsorted.forEach(it=>u.appendChild(make(it)));
 }
 load();
 </script>
+
 </body>
 </html>
