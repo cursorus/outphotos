@@ -1,0 +1,41 @@
+name: Telegram media -> records.json
+
+on:
+  schedule:
+    - cron: '*/5 * * * *'   # каждые 5 минут (можешь изменить)
+  workflow_dispatch:
+
+jobs:
+  build:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Set up Python
+        uses: actions/setup-python@v4
+        with:
+          python-version: '3.11'
+
+      - name: Install deps
+        run: |
+          python -m pip install --upgrade pip
+          pip install python-telegram-bot==13.17 exifread
+
+      - name: Run processor
+        env:
+          BOT_TOKEN: ${{ secrets.BOT_TOKEN }}
+          SRC_CHAT_ID: ${{ secrets.SRC_CHAT_ID }}
+        run: |
+          python bot_auto_run.py
+
+      - name: Commit records.json if changed
+        run: |
+          git config user.name "github-actions[bot]"
+          git config user.email "41898282+github-actions[bot]@users.noreply.github.com"
+          if git status --porcelain | grep -q records.json; then
+            git add records.json
+            git commit -m "Update records.json (automated)"
+            git push
+          else
+            echo "No changes to records.json"
+          fi
