@@ -92,7 +92,8 @@ def process_update(u, records):
     u: update object from getUpdates
     records: list of existing records (will be modified in-place)
     """
-    message = u.get("message") or u.get("edited_message")
+    # теперь учитываем channel_post
+    message = u.get("message") or u.get("edited_message") or u.get("channel_post")
     if not message:
         return
     chat = message.get("chat") or {}
@@ -161,14 +162,6 @@ def process_update(u, records):
 def main():
     if not BOT_TOKEN or not SRC_CHAT_ID:
         raise SystemExit("BOT_TOKEN or SRC_CHAT_ID not set in environment")
-
-    # Убираем webhook, чтобы polling заработал
-    try:
-        r = requests.get(f"{API}/deleteWebhook", timeout=10)
-        r.raise_for_status()
-        print("Webhook deleted:", r.json())
-    except Exception as e:
-        print("Failed to delete webhook:", e)
 
     state = load_json(STATE_FILE, {"update_offset": None})
     records = load_json(RECORDS_FILE, [])
