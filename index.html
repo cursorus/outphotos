@@ -1,350 +1,315 @@
-<!doctype html>
+<!DOCTYPE html>
 <html lang="ru">
 <head>
-<meta charset="utf-8" />
-<meta name="viewport" content="width=device-width,initial-scale=1" />
-<title>Gallery</title>
+<meta charset="UTF-8">
+<title>Галерея</title>
 <style>
-:root{
-  --bg:#1c1c1c;
-  --panel:#0f1720;
-  --accent:#60a5fa;
-  --muted:#9aa4b2;
-}
-body{
-  margin:0;
-  background:var(--bg);
-  color:#fff;
-  font-family:system-ui,-apple-system,BlinkMacSystemFont,"Segoe UI",Roboto,"Helvetica Neue",Arial;
-  -webkit-font-smoothing:antialiased;
-  -moz-osx-font-smoothing:grayscale;
-  -webkit-tap-highlight-color:transparent;
-}
-header{
-  display:flex;
-  justify-content:flex-start;
-  gap:18px;
-  padding:10px;
-  font-size:17px;
-}
-header div{ cursor:pointer; user-select:none; padding:6px 8px; border-radius:8px; }
-header div.active{ background:#111; }
+    body {
+        font-family: sans-serif;
+        margin: 0;
+        background: #111;
+        color: #fff;
+    }
 
-#gallery{
-  display:grid;
-  grid-template-columns:repeat(3,1fr);
-  gap:4px;
-  padding:6px;
-}
+    /* Панель альбомов */
+    #albumsBar {
+        display: flex;
+        align-items: center;
+        background: #1a1a1a;
+        padding: 10px;
+        border-bottom: 1px solid #333;
+        gap: 10px;
+        position: sticky;
+        top: 0;
+        z-index: 50;
+    }
 
-.year{
-  grid-column:1/-1;
-  text-align:left;
-  padding:6px 4px;
-  font-size:18px;
-  font-weight:700;
-  color:#fff;
-}
+    #albumsBar button {
+        background: #2c2c2c;
+        border: 1px solid #444;
+        color: #fff;
+        padding: 6px 12px;
+        border-radius: 6px;
+        cursor: pointer;
+    }
 
-.item{
-  border:2px solid rgba(255,255,255,0.06);
-  height:120px;
-  border-radius:8px;
-  cursor:pointer;
-  background:#131313;
-  display:flex;
-  align-items:center;
-  justify-content:center;
-  position:relative;
-}
-.item .placeholder{
-  width:40%;
-  height:40%;
-  opacity:0.12;
-}
-.item img, .item video{
-  width:100%;
-  height:100%;
-  object-fit:cover;
-  display:block;
-}
+    #albumsBar button.active {
+        background: #4a4a4a;
+    }
 
-/* ---------------------------- */
-/* FULLSCREEN VIEWER */
-/* ---------------------------- */
-#fs{
-  display:none;
-  position:fixed;
-  inset:0;
-  background:rgba(0,0,0,0.96);
-  z-index:1200;
-  justify-content:center;
-  align-items:flex-start;
-  flex-direction:column;
-  padding-top:28px;
-  box-sizing:border-box;
-}
+    /* Галочка выбора */
+    #selectModeBtn {
+        font-size: 20px;
+        padding: 4px 10px;
+    }
 
-#fs .media-wrap{
-  width:100%;
-  display:flex;
-  justify-content:center;
-  align-items:center;
-}
+    /* Галерея */
+    #gallery {
+        display: grid;
+        grid-template-columns: repeat(auto-fill, minmax(180px, 1fr));
+        gap: 12px;
+        padding: 12px;
+    }
 
-#fs img, #fs video{
-  width: calc(100vw - 24px);
-  height: auto;
-  max-height: calc(100vh - 160px);
-  border-radius:8px;
-  box-shadow: 0 10px 30px rgba(0,0,0,0.6);
-}
+    .item {
+        background: #222;
+        padding: 6px;
+        border-radius: 8px;
+        position: relative;
+    }
 
-/* bottom panel with actions */
-#fsPanel{
-  position:fixed;
-  left:0;
-  right:0;
-  bottom:0;
-  display:flex;
-  justify-content:center;
-  padding:18px;
-  box-sizing:border-box;
-  transform: translateY(110%);
-  transition: transform 320ms cubic-bezier(.2,.9,.3,1);
-  z-index:1250;
-}
-#fs.showPanel #fsPanel{ transform: translateY(0); }
+    .item img, .item video {
+        width: 100%;
+        border-radius: 6px;
+        background: #333;
+    }
 
-.panelBtn{
-  display:inline-flex;
-  align-items:center;
-  gap:10px;
-  padding:10px 14px;
-  background: linear-gradient(180deg, rgba(255,255,255,0.03), rgba(255,255,255,0.01));
-  color:#fff;
-  border:none;
-  border-radius:12px;
-  font-weight:600;
-  cursor:pointer;
-  margin:0 8px;
-  min-width:140px;
-  justify-content:center;
-}
-.panelBtn svg{ width:18px; height:18px; flex:0 0 18px; }
+    /* Чекбокс выбора медиа */
+    .selectBox {
+        position: absolute;
+        top: 6px;
+        left: 6px;
+        width: 22px;
+        height: 22px;
+        background: rgba(255,255,255,0.8);
+        border-radius: 4px;
+        display: none;
+        align-items: center;
+        justify-content: center;
+        color: #000;
+        font-size: 16px;
+        font-weight: bold;
+        cursor: pointer;
+    }
 
-/* ---------------------------- */
-/* RUN WORKFLOW BUTTON */
-/* ---------------------------- */
-#runWrap{ display:flex; justify-content:center; padding:12px; }
-#runBtn{
-  display:inline-flex;
-  align-items:center;
-  gap:10px;
-  padding:10px 16px;
-  border-radius:12px;
-  border:none;
-  background:var(--accent);
-  color:#07243b;
-  font-weight:700;
-  cursor:pointer;
-}
-#runIcon{ width:18px; height:18px; display:inline-block; }
+    .selected .selectBox {
+        background: #4caf50 !important;
+        color: #fff !important;
+    }
 
-/* spinner */
-@keyframes spin { to { transform: rotate(360deg); } }
-.icon-spinner{ animation: spin 1s linear infinite; }
+    /* Панель назначения альбома */
+    #assignPanel {
+        display: none;
+        padding: 10px;
+        background: #1a1a1a;
+        border-top: 1px solid #333;
+        position: sticky;
+        bottom: 0;
+        z-index: 50;
+    }
 
-/* ---------------------------- */
-/* CUSTOM CONSOLE */
-/* ---------------------------- */
-#consoleBtn{
-  position:fixed;
-  bottom:80px;
-  right:12px;
-  z-index:1500;
-  background:#222;
-  padding:10px;
-  border-radius:8px;
-  cursor:pointer;
-  border:1px solid #333;
-}
-#consoleBtn svg{
-  width:22px;
-  height:22px;
-  stroke:#fff;
-}
+    /* Консоль */
+    #consolePanel {
+        background: #000;
+        color: #0f0;
+        font-family: monospace;
+        padding: 10px;
+        height: 200px;
+        overflow-y: auto;
+        display: none;
+        border-top: 3px solid #444;
+    }
 
-#consolePanel{
-  display:none;
-  position:fixed;
-  bottom:0;
-  left:0;
-  right:0;
-  height:35%;
-  background:#000;
-  color:#0f0;
-  font-family:monospace;
-  padding:10px;
-  overflow-y:auto;
-  z-index:1400;
-  border-top:2px solid #444;
-  white-space:pre-wrap;
-  font-size:13px;
-}
+    #toggleConsole {
+        position: fixed;
+        bottom: 20px;
+        right: 20px;
+        background: #222;
+        border: 1px solid #555;
+        color: #fff;
+        padding: 10px 14px;
+        border-radius: 50%;
+        font-size: 20px;
+        cursor: pointer;
+        z-index: 100;
+    }
 </style>
 </head>
 <body>
 
-<header>
-  <div id="btnSorted" class="active">Сортированное</div>
-  <div id="btnUnsorted">Несортированное</div>
-</header>
+<!-- Панель альбомов -->
+<div id="albumsBar">
+    <button id="selectModeBtn">☑</button>
+    <button class="albumBtn active" data-album="all">Все</button>
+    <div id="albumsContainer"></div>
+</div>
 
+<!-- Галерея -->
 <div id="gallery"></div>
 
-<!-- FULLSCREEN VIEWER -->
-<div id="fs" onclick="fsClose(event)">
-  <div class="media-wrap" id="fsMediaWrap"></div>
-  <div id="fsDate" style="color:#ddd; text-align:center; margin-top:12px;"></div>
-
-  <div id="fsPanel">
-    <button class="panelBtn" id="downloadBtn">
-      Скачать
-    </button>
-    <button class="panelBtn" id="deleteBtn">
-      Удалить
-    </button>
-  </div>
+<!-- Панель выбора альбома для добавления -->
+<div id="assignPanel">
+    <span>Добавить выбранные элементы в альбом:</span>
+    <select id="assignSelect"></select>
 </div>
 
-<!-- RUN WORKFLOW -->
-<div id="runWrap">
-  <button id="runBtn">
-    <span id="runIcon">▶</span>
-    <span id="runText">Запустить workflow</span>
-  </button>
-</div>
-
-<!-- TOGGLE CONSOLE BUTTON -->
-<div id="consoleBtn" onclick="toggleConsole()">
-  <svg viewBox="0 0 24 24" fill="none" stroke="currentColor"><path d="M4 17l6-6-6-6"/><path d="M12 19h8"/></svg>
-</div>
-
-<!-- CONSOLE PANEL -->
+<!-- Консоль -->
 <div id="consolePanel"></div>
 
+<button id="toggleConsole">🖥</button>
+
 <script>
-/* ================================================================== */
-/* CUSTOM CONSOLE LOGGER */
-/* ================================================================== */
-(function() {
-  const panel = document.getElementById("consolePanel");
+function log(msg) {
+    const p = document.createElement("div");
+    p.textContent = "[LOG] " + msg;
+    document.getElementById("consolePanel").appendChild(p);
+}
+log("Панель консоли загружена");
 
-  function push(type, msg) {
-    const t = typeof msg === "object" ? JSON.stringify(msg, null, 2) : msg;
-    panel.textContent += `[${type}] ${t}\n`;
-    panel.scrollTop = panel.scrollHeight;
-  }
+let records = [];
+let albums = [];
+let selectMode = false;
+let selected = new Set();
 
-  const oldLog = console.log;
-  console.log = function(...a){
-    push("LOG", a.join(" "));
-    oldLog.apply(console, a);
-  };
+async function loadRecords() {
+    log("Загрузка records.json...");
+    const res = await fetch("records.json");
+    log("Статус ответа: " + res.status);
+    records = await res.json();
+    log("Загружено записей: " + records.length);
 
-  const oldErr = console.error;
-  console.error = function(...a){
-    push("ERROR", a.join(" "));
-    oldErr.apply(console, a);
-  };
-
-  const oldWarn = console.warn;
-  console.warn = function(...a){
-    push("WARN", a.join(" "));
-    oldWarn.apply(console, a);
-  };
-
-  window.toggleConsole = function(){
-    panel.style.display = panel.style.display === "none" ? "block" : "none";
-  };
-})();
-console.log("Панель консоли загружена");
-
-/* ================================================================== */
-/* YOUR ORIGINAL SCRIPT (ПОЧТИ БЕЗ ИЗМЕНЕНИЙ) */
-/* ================================================================== */
-
-const BOT_TOKEN="";
-
-let data=[];
-let sorted=true;
-const filePathCache={};
-const deletedIdsKey="outphotos_deleted_ids";
-let deletedIds=new Set(JSON.parse(localStorage.getItem(deletedIdsKey)||"[]"));
-
-async function loadRecords(){
-  console.log("Загрузка records.json...");
-  try{
-    const r=await fetch("records.json?cache="+Math.random());
-    console.log("Статус ответа:", r.status);
-    if(!r.ok){
-      console.error("Файл records.json не загрузился");
-      return;
-    }
-    data=await r.json();
-    console.log("Загружено:", data);
-    render();
-  }catch(e){
-    console.error("Ошибка загрузки:", e);
-  }
+    collectAlbums();
+    renderAlbumButtons();
+    updateAssignList();
+    renderGallery();
 }
 
-async function getTelegramFilePath(file_id){
-  if(filePathCache[file_id]!==undefined) return filePathCache[file_id];
-  if(!BOT_TOKEN){ filePathCache[file_id]=null; return null; }
-  return null;
+function collectAlbums() {
+    const set = new Set();
+    records.forEach(r => {
+        if (r.album) set.add(r.album);
+    });
+    albums = Array.from(set).sort();
 }
 
-async function render(){
-  console.log("Рендер галереи…");
-  const g=document.getElementById("gallery");
-  g.innerHTML="";
+function renderAlbumButtons() {
+    const container = document.getElementById("albumsContainer");
+    container.innerHTML = "";
+    albums.forEach(a => {
+        const b = document.createElement("button");
+        b.className = "albumBtn";
+        b.dataset.album = a;
+        b.textContent = a;
+        container.appendChild(b);
+    });
+}
 
-  const arr=sorted ? data.filter(x=>x.created_at) : data.filter(x=>!x.created_at);
+function updateAssignList() {
+    const sel = document.getElementById("assignSelect");
+    sel.innerHTML = "";
+    albums.forEach(a => {
+        const opt = document.createElement("option");
+        opt.value = a;
+        opt.textContent = a;
+        sel.appendChild(opt);
+    });
+}
 
-  console.log("Элементов в списке:", arr.length);
+function renderGallery(currentAlbum = "all") {
+    log("Рендер галереи…");
 
-  let currentYear="";
-  for(const item of arr){
-    if(deletedIds.has(item.src_msg_id)) continue;
-    const year=item.created_at ? new Date(item.created_at).getFullYear() : "???";
+    const g = document.getElementById("gallery");
+    g.innerHTML = "";
 
-    if(year!==currentYear){
-      currentYear=year;
-      const y=document.createElement("div");
-      y.className="year";
-      y.textContent=year;
-      g.appendChild(y);
+    let list = records;
+    if (currentAlbum !== "all") {
+        list = records.filter(r => r.album === currentAlbum);
     }
 
-    const div=document.createElement("div");
-    div.className="item";
-    div.textContent="Загрузка…";
-    g.appendChild(div);
-  }
+    log("Элементов в списке: " + list.length);
+
+    list.forEach(item => {
+        const div = document.createElement("div");
+        div.className = "item";
+        div.dataset.id = item.src_msg_id;
+
+        const sbox = document.createElement("div");
+        sbox.className = "selectBox";
+        sbox.textContent = "✓";
+        div.appendChild(sbox);
+
+        let url = item.file_path || item.local_path || item.download_url || item.src_file_id;
+
+        if (item.type === "photo") {
+            const img = document.createElement("img");
+            img.src = url;
+            img.loading = "lazy";
+            div.appendChild(img);
+        } else if (item.type === "video") {
+            const video = document.createElement("video");
+            video.src = url;
+            video.controls = true;
+            div.appendChild(video);
+        }
+
+        div.addEventListener("click", () => {
+            if (!selectMode) return;
+
+            if (selected.has(item.src_msg_id)) {
+                selected.delete(item.src_msg_id);
+                div.classList.remove("selected");
+            } else {
+                selected.add(item.src_msg_id);
+                div.classList.add("selected");
+            }
+        });
+
+        g.appendChild(div);
+    });
 }
 
-document.getElementById("btnSorted").onclick=()=>{
-  sorted=true;
-  render();
-};
-document.getElementById("btnUnsorted").onclick=()=>{
-  sorted=false;
-  render();
-};
+/* Выбор альбома */
+document.addEventListener("click", e => {
+    if (e.target.classList.contains("albumBtn")) {
+        document.querySelectorAll(".albumBtn").forEach(b => b.classList.remove("active"));
+        e.target.classList.add("active");
+        const album = e.target.dataset.album;
+        renderGallery(album);
+    }
+});
+
+/* Включение режима выбора */
+document.getElementById("selectModeBtn").addEventListener("click", () => {
+    selectMode = !selectMode;
+    selected.clear();
+
+    if (selectMode) {
+        document.querySelectorAll(".selectBox").forEach(b => b.style.display = "flex");
+        document.getElementById("assignPanel").style.display = "block";
+        document.getElementById("selectModeBtn").style.background = "#4a4a4a";
+    } else {
+        document.querySelectorAll(".selectBox").forEach(b => b.style.display = "none");
+        document.getElementById("assignPanel").style.display = "none";
+        document.querySelectorAll(".item").forEach(i => i.classList.remove("selected"));
+        document.getElementById("selectModeBtn").style.background = "";
+    }
+});
+
+/* Назначение альбома */
+document.getElementById("assignSelect").addEventListener("change", () => {
+    const album = document.getElementById("assignSelect").value;
+
+    let patch = [];
+
+    selected.forEach(id => {
+        const r = records.find(x => x.src_msg_id == id);
+        if (r) {
+            patch.push({ id: r.src_msg_id, newAlbum: album });
+        }
+    });
+
+    log("PATCH для обновления records.json:");
+    log(JSON.stringify(patch, null, 2));
+});
+
+/* Консоль */
+document.getElementById("toggleConsole").addEventListener("click", () => {
+    const p = document.getElementById("consolePanel");
+    p.style.display = (p.style.display === "block") ? "none" : "block";
+});
 
 loadRecords();
 </script>
+
 </body>
 </html>
