@@ -207,9 +207,11 @@ async function render(){
   g.innerHTML = "";
   const arr = sorted ? data.filter(x=>x.created_at) : data.filter(x=>!x.created_at);
   let currentYear = "";
+
   for(const item of arr){
     if(deletedIds.has(item.src_msg_id)) continue;
     const year = item.created_at ? new Date(item.created_at).getFullYear() : "???";
+
     if(year !== currentYear){
       currentYear = year;
       const y = document.createElement("div");
@@ -218,18 +220,25 @@ async function render(){
       g.appendChild(y);
     }
 
+    // создаем блок сразу
     const div = document.createElement("div");
     div.className = "item";
+
     const placeholder = document.createElement("div");
     placeholder.className = "placeholder";
-    placeholder.innerHTML = "⏳"; // простой placeholder
+    placeholder.textContent = "⏳";
     div.appendChild(placeholder);
     g.appendChild(div);
 
+    // асинхронно загружаем файл
     (async ()=>{
       const url = await getFileUrl(item.src_file_id);
-      if(!url){ div.remove(); return; }
-      div.innerHTML = "";
+      if(!url){
+        div.remove(); // удаляем блок если файла нет
+        return;
+      }
+
+      div.innerHTML = ""; // убираем placeholder
       if(item.type==="photo"){
         const img = document.createElement("img");
         img.src = url;
@@ -240,8 +249,9 @@ async function render(){
         v.controls = true;
         div.appendChild(v);
       } else {
-        div.innerHTML = "<div style='padding:8px;color:#aaa'>Unsupported</div>";
+        div.innerHTML = "<div style='color:#aaa'>Unsupported</div>";
       }
+
       div.onclick = ()=>openFS(item);
     })();
   }
