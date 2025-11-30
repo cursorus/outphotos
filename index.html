@@ -1,175 +1,170 @@
-<!doctype html>
+<!DOCTYPE html>
 <html lang="ru">
 <head>
-<meta charset="utf-8" />
-<meta name="viewport" content="width=device-width,initial-scale=1" />
-<title>Gallery</title>
+<meta charset="UTF-8">
+<title>Outphotos</title>
+<meta name="viewport" content="width=device-width, initial-scale=1">
+
 <style>
-  body{
-    margin:0;
-    background:#0f1720;
-    color:white;
-    font-family:sans-serif;
-  }
+    body {
+        background: #0d0d0f;
+        margin: 0;
+        font-family: sans-serif;
+        color: white;
+    }
 
-  header{
-    text-align:center;
-    padding:10px 0;
-    font-size:18px;
-    display:flex;
-    justify-content:center;
-    gap:25px;
-  }
-  header div{ cursor:pointer; }
+    h2.year {
+        margin: 20px 0 10px;
+        padding-left: 10px;
+        font-size: 20px;
+        opacity: 0.9;
+    }
 
-  #gallery{
-    display:grid;
-    grid-template-columns:repeat(3,1fr);
-    gap:6px;
-    padding:6px;
-  }
+    .grid {
+        display: grid;
+        grid-template-columns: repeat(3, 1fr);
+        gap: 6px;
+        padding: 6px;
+    }
 
-  .year{
-    grid-column:1 / -1;
-    text-align:left;
-    padding:5px;
-    font-size:16px;
-    font-weight:bold;
-  }
+    .item {
+        width: 100%;
+        aspect-ratio: 1/1;
+        background: #181818;
+        border-radius: 6px;
+        overflow: hidden;
+        position: relative;
+    }
 
-  .item{
-    border:2px solid #ffffff33; /* ТВОЯ РАМКА */
-    height:120px;
-    overflow:hidden;
-    border-radius:6px;
-    cursor:pointer;
-    background:#1a2530;
-    display:flex;
-    align-items:center;
-    justify-content:center;
-  }
-  .item img,
-  .item video{
-    width:100%;
-    height:100%;
-    object-fit:cover;
-  }
+    .item-img {
+        width: 100%;
+        height: 100%;
+        object-fit: cover;
+        display: block;
+    }
 
-  /* Fullscreen */
-  #fs{
-    display:none;
-    position:fixed;
-    inset:0;
-    background:rgba(0,0,0,0.95);
-    z-index:2000;
-    justify-content:center;
-    align-items:center;
-    flex-direction:column;
-  }
-  #fs img, #fs video{
-    max-width:100%;
-    max-height:80%;
-  }
-  #fs .date{
-    margin-top:12px;
-    font-size:18px;
-  }
+    /* FULLSCREEN VIEWER */
+    #viewer {
+        position: fixed;
+        inset: 0;
+        background: rgba(0,0,0,0.95);
+        display: none;
+        align-items: center;
+        justify-content: center;
+        z-index: 999;
+        flex-direction: column;
+    }
+
+    #viewer img, 
+    #viewer video {
+        max-width: 100%;
+        max-height: 85%;
+        border-radius: 8px;
+    }
+
+    #viewer .date {
+        margin-top: 10px;
+        font-size: 16px;
+        opacity: 0.8;
+    }
+
 </style>
 </head>
 <body>
 
-<header>
-  <div id="btnSorted">Сортированное</div>
-  <div id="btnUnsorted">Несортированное</div>
-</header>
+<div id="content"></div>
 
-<div id="gallery"></div>
-
-<div id="fs">
-  <div id="fsContent"></div>
-  <div class="date" id="fsDate"></div>
+<div id="viewer" onclick="closeViewer()">
+    <div id="viewerMedia"></div>
+    <div class="date" id="viewerDate"></div>
 </div>
 
 <script>
-let data = [];
-let sorted = true;
+// records.json будет подгружаться автоматически с GitHub Pages
+fetch("records.json")
+    .then(r => r.json())
+    .then(records => render(records));
 
-// Загружаем JSON
-fetch("records.json").then(r=>r.json()).then(j=>{
-  data = j;
-  render();
-});
+function render(records) {
+    const content = document.getElementById("content");
 
-// Рендер галереи
-function render(){
-  const g = document.getElementById("gallery");
-  g.innerHTML = "";
-
-  let arr = sorted ? data.filter(x=>x.created_at) : data.filter(x=>!x.created_at);
-
-  let currentYear = "";
-  arr.forEach(item=>{
-    let year = item.created_at ? new Date(item.created_at).getFullYear() : "???";
-
-    if(year !== currentYear){
-      currentYear = year;
-      const y = document.createElement("div");
-      y.className = "year";
-      y.textContent = year;
-      g.appendChild(y);
+    // группировка по году
+    const groups = {};
+    for (const r of records) {
+        const year = (r.created_at || "").slice(0, 4);
+        if (!groups[year]) groups[year] = [];
+        groups[year].push(r);
     }
 
-    const div = document.createElement("div");
-    div.className = "item";
+    // рисуем по годам
+    for (const year of Object.keys(groups).sort().reverse()) {
+        const h = document.createElement("h2");
+        h.className = "year";
+        h.textContent = year;
+        content.appendChild(h);
 
-    if(item.type === "photo"){
-      const img = document.createElement("img");
-      img.src = item.file_path;
-      div.appendChild(img);
+        const grid = document.createElement("div");
+        grid.className = "grid";
+
+        for (const rec of groups[year]) {
+            const item = document.createElement("div");
+            item.className = "item";
+
+            if (rec.type === "photo") {
+                const img = document.createElement("img");
+                img.src = rec.local_path;        // <-- ИСПОЛЬЗУЕМ ЛОКАЛЬНЫЙ ФАЙЛ
+                img.className = "item-img";
+                img.onclick = () => openViewer(img.src, rec.created_at, false);
+                item.appendChild(img);
+            } 
+            else if (rec.type === "video") {
+                const video = document.createElement("video");
+                video.src = rec.local_path;
+                video.className = "item-img";
+                video.muted = true;
+                video.loop = true;
+                video.play();
+                video.onclick = () => openViewer(video.src, rec.created_at, true);
+                item.appendChild(video);
+            }
+
+            grid.appendChild(item);
+        }
+
+        content.appendChild(grid);
+    }
+}
+
+function openViewer(src, date, isVideo) {
+    const viewer = document.getElementById("viewer");
+    const media = document.getElementById("viewerMedia");
+    const d = document.getElementById("viewerDate");
+
+    media.innerHTML = "";
+
+    if (isVideo) {
+        const v = document.createElement("video");
+        v.src = src;
+        v.controls = true;
+        v.autoplay = true;
+        media.appendChild(v);
     } else {
-      const v = document.createElement("video");
-      v.src = item.file_path;
-      v.muted = true;
-      v.loop = true;
-      v.autoplay = true;
-      div.appendChild(v);
+        const i = document.createElement("img");
+        i.src = src;
+        media.appendChild(i);
     }
 
-    div.onclick = ()=>openFS(item);
-    g.appendChild(div);
-  });
+    d.textContent = date.replace("T", " ").replace("Z", "");
+    viewer.style.display = "flex";
 }
 
-// Fullscreen
-function openFS(item){
-  const fs = document.getElementById("fs");
-  const c = document.getElementById("fsContent");
-  const d = document.getElementById("fsDate");
-
-  c.innerHTML = "";
-  d.textContent = item.created_at ? new Date(item.created_at).toLocaleString() : "";
-
-  if(item.type === "photo"){
-    const img = document.createElement("img");
-    img.src = item.file_path;
-    c.appendChild(img);
-  } else {
-    const v = document.createElement("video");
-    v.src = item.file_path;
-    v.controls = true;
-    v.autoplay = true;
-    c.appendChild(v);
-  }
-
-  fs.style.display = "flex";
+function closeViewer() {
+    const viewer = document.getElementById("viewer");
+    const media = document.getElementById("viewerMedia");
+    viewer.style.display = "none";
+    media.innerHTML = "";
 }
-
-document.getElementById("fs").onclick = ()=>(
-  document.getElementById("fs").style.display = "none"
-);
-
-document.getElementById("btnSorted").onclick = ()=>{ sorted=true; render(); };
-document.getElementById("btnUnsorted").onclick = ()=>{ sorted=false; render(); };
 </script>
+
 </body>
 </html>
