@@ -1,177 +1,175 @@
-<!DOCTYPE html>
-<html lang="en">
+<!doctype html>
+<html lang="ru">
 <head>
-<meta charset="UTF-8">
-<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<meta charset="utf-8" />
+<meta name="viewport" content="width=device-width,initial-scale=1" />
 <title>Gallery</title>
 <style>
-  body {
-    margin: 0;
-    font-family: sans-serif;
-    background-color: #0f1720;
-    color: #fff;
+  body{
+    margin:0;
+    background:#0f1720;
+    color:white;
+    font-family:sans-serif;
   }
-  header {
-    display: flex;
-    justify-content: flex-start;
-    padding: 10px;
-    gap: 20px;
+
+  header{
+    text-align:center;
+    padding:10px 0;
+    font-size:18px;
+    display:flex;
+    justify-content:center;
+    gap:25px;
   }
-  header div {
-    cursor: pointer;
-    font-weight: bold;
+  header div{ cursor:pointer; }
+
+  #gallery{
+    display:grid;
+    grid-template-columns:repeat(3,1fr);
+    gap:6px;
+    padding:6px;
   }
-  #gallery {
-    display: grid;
-    grid-template-columns: repeat(3, 1fr);
-    gap: 2px;
-    padding: 2px;
+
+  .year{
+    grid-column:1 / -1;
+    text-align:left;
+    padding:5px;
+    font-size:16px;
+    font-weight:bold;
   }
-  .item {
-    position: relative;
-    cursor: pointer;
-    overflow: hidden;
-    height: 120px;
+
+  .item{
+    border:2px solid #ffffff33; /* ТВОЯ РАМКА */
+    height:120px;
+    overflow:hidden;
+    border-radius:6px;
+    cursor:pointer;
+    background:#1a2530;
+    display:flex;
+    align-items:center;
+    justify-content:center;
   }
-  .item img, .item video {
-    width: 100%;
-    height: 100%;
-    object-fit: cover;
-    display: block;
+  .item img,
+  .item video{
+    width:100%;
+    height:100%;
+    object-fit:cover;
   }
-  #fullscreenOverlay {
-    display: none;
-    position: fixed;
-    top:0; left:0;
-    width: 100%;
-    height: 100%;
-    background: rgba(0,0,0,0.95);
-    justify-content: center;
-    align-items: center;
-    z-index: 1000;
-    flex-direction: column;
+
+  /* Fullscreen */
+  #fs{
+    display:none;
+    position:fixed;
+    inset:0;
+    background:rgba(0,0,0,0.95);
+    z-index:2000;
+    justify-content:center;
+    align-items:center;
+    flex-direction:column;
   }
-  #fullscreenOverlay img, #fullscreenOverlay video {
-    max-width: 100%;
-    max-height: 80%;
+  #fs img, #fs video{
+    max-width:100%;
+    max-height:80%;
   }
-  #fullscreenOverlay .date {
-    margin-top: 10px;
-    font-size: 18px;
-    color: #fff;
-  }
-  .year-label {
-    width: 100%;
-    text-align: left;
-    font-size: 16px;
-    font-weight: bold;
-    padding: 5px 0 0 5px;
+  #fs .date{
+    margin-top:12px;
+    font-size:18px;
   }
 </style>
 </head>
 <body>
+
 <header>
-  <div id="sortedBtn">Сортированное</div>
-  <div id="unsortedBtn">Несортированное</div>
+  <div id="btnSorted">Сортированное</div>
+  <div id="btnUnsorted">Несортированное</div>
 </header>
 
 <div id="gallery"></div>
 
-<div id="fullscreenOverlay">
+<div id="fs">
   <div id="fsContent"></div>
   <div class="date" id="fsDate"></div>
 </div>
 
 <script>
-// Если хотите, вставьте сюда свой BOT_TOKEN
-const BOT_TOKEN = ''; // пустой если используете file_path из records.json
-
-let records = [];
+let data = [];
 let sorted = true;
 
-// загрузка JSON
-fetch('records.json')
-  .then(r => r.json())
-  .then(data => {
-    records = data;
-    showGallery();
-  });
+// Загружаем JSON
+fetch("records.json").then(r=>r.json()).then(j=>{
+  data = j;
+  render();
+});
 
-function showGallery() {
-  const gallery = document.getElementById('gallery');
-  gallery.innerHTML = '';
+// Рендер галереи
+function render(){
+  const g = document.getElementById("gallery");
+  g.innerHTML = "";
 
-  let displayData = sorted 
-    ? records.filter(r => r.created_at) 
-    : records.filter(r => !r.created_at);
+  let arr = sorted ? data.filter(x=>x.created_at) : data.filter(x=>!x.created_at);
 
-  let currentYear = '';
-  displayData.forEach(item => {
-    const year = item.created_at ? new Date(item.created_at).getFullYear() : '??';
-    if (year !== currentYear) {
+  let currentYear = "";
+  arr.forEach(item=>{
+    let year = item.created_at ? new Date(item.created_at).getFullYear() : "???";
+
+    if(year !== currentYear){
       currentYear = year;
-      const yearDiv = document.createElement('div');
-      yearDiv.className = 'year-label';
-      yearDiv.textContent = year;
-      gallery.appendChild(yearDiv);
+      const y = document.createElement("div");
+      y.className = "year";
+      y.textContent = year;
+      g.appendChild(y);
     }
 
-    const div = document.createElement('div');
-    div.className = 'item';
-    if(item.type==='photo'){
-      const img = document.createElement('img');
-      img.src = item.file_path.startsWith('http') 
-                ? item.file_path 
-                : `https://api.telegram.org/file/bot${BOT_TOKEN}/${item.file_path}`;
+    const div = document.createElement("div");
+    div.className = "item";
+
+    if(item.type === "photo"){
+      const img = document.createElement("img");
+      img.src = item.file_path;
       div.appendChild(img);
-    } else if(item.type==='video'){
-      const vid = document.createElement('video');
-      vid.src = item.file_path.startsWith('http') 
-                ? item.file_path 
-                : `https://api.telegram.org/file/bot${BOT_TOKEN}/${item.file_path}`;
-      vid.muted = true;
-      vid.loop = true;
-      vid.autoplay = true;
-      div.appendChild(vid);
+    } else {
+      const v = document.createElement("video");
+      v.src = item.file_path;
+      v.muted = true;
+      v.loop = true;
+      v.autoplay = true;
+      div.appendChild(v);
     }
 
-    div.onclick = () => showFullscreen(item);
-    gallery.appendChild(div);
+    div.onclick = ()=>openFS(item);
+    g.appendChild(div);
   });
 }
 
-function showFullscreen(item){
-  const overlay = document.getElementById('fullscreenOverlay');
-  const fsContent = document.getElementById('fsContent');
-  const fsDate = document.getElementById('fsDate');
+// Fullscreen
+function openFS(item){
+  const fs = document.getElementById("fs");
+  const c = document.getElementById("fsContent");
+  const d = document.getElementById("fsDate");
 
-  fsContent.innerHTML = '';
-  if(item.type==='photo'){
-    const img = document.createElement('img');
-    img.src = item.file_path.startsWith('http') 
-              ? item.file_path 
-              : `https://api.telegram.org/file/bot${BOT_TOKEN}/${item.file_path}`;
-    fsContent.appendChild(img);
-  } else if(item.type==='video'){
-    const vid = document.createElement('video');
-    vid.src = item.file_path.startsWith('http') 
-              ? item.file_path 
-              : `https://api.telegram.org/file/bot${BOT_TOKEN}/${item.file_path}`;
-    vid.controls = true;
-    vid.autoplay = true;
-    fsContent.appendChild(vid);
+  c.innerHTML = "";
+  d.textContent = item.created_at ? new Date(item.created_at).toLocaleString() : "";
+
+  if(item.type === "photo"){
+    const img = document.createElement("img");
+    img.src = item.file_path;
+    c.appendChild(img);
+  } else {
+    const v = document.createElement("video");
+    v.src = item.file_path;
+    v.controls = true;
+    v.autoplay = true;
+    c.appendChild(v);
   }
 
-  fsDate.textContent = item.created_at ? new Date(item.created_at).toLocaleString() : '';
-  overlay.style.display = 'flex';
+  fs.style.display = "flex";
 }
 
-document.getElementById('fullscreenOverlay').onclick = () => {
-  document.getElementById('fullscreenOverlay').style.display = 'none';
-}
+document.getElementById("fs").onclick = ()=>(
+  document.getElementById("fs").style.display = "none"
+);
 
-document.getElementById('sortedBtn').onclick = () => { sorted=true; showGallery(); }
-document.getElementById('unsortedBtn').onclick = () => { sorted=false; showGallery(); }
+document.getElementById("btnSorted").onclick = ()=>{ sorted=true; render(); };
+document.getElementById("btnUnsorted").onclick = ()=>{ sorted=false; render(); };
 </script>
 </body>
 </html>
