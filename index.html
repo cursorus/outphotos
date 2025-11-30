@@ -1,169 +1,203 @@
-<!DOCTYPE html>
+<!doctype html>
 <html lang="ru">
 <head>
-<meta charset="UTF-8">
-<title>Outphotos</title>
-<meta name="viewport" content="width=device-width, initial-scale=1">
-
+<meta charset="utf-8" />
+<meta name="viewport" content="width=device-width,initial-scale=1" />
+<title>Gallery</title>
 <style>
-    body {
-        background: #0d0d0f;
-        margin: 0;
-        font-family: sans-serif;
-        color: white;
-    }
+  body {
+    margin:0;
+    background:#0f1720;
+    color:white;
+    font-family:sans-serif;
+  }
 
-    h2.year {
-        margin: 20px 0 10px;
-        padding-left: 10px;
-        font-size: 20px;
-        opacity: 0.9;
-    }
+  header {
+    display:flex;
+    justify-content:flex-start;
+    gap:25px;
+    padding:10px;
+    font-size:18px;
+  }
+  header div { cursor:pointer; }
 
-    .grid {
-        display: grid;
-        grid-template-columns: repeat(3, 1fr);
-        gap: 6px;
-        padding: 6px;
-    }
+  #gallery {
+    display:grid;
+    grid-template-columns:repeat(3,1fr);
+    gap:6px;
+    padding:6px;
+  }
 
-    .item {
-        width: 100%;
-        aspect-ratio: 1/1;
-        background: #181818;
-        border-radius: 6px;
-        overflow: hidden;
-        position: relative;
-    }
+  .year {
+    grid-column:1/-1;
+    text-align:left;
+    padding:5px;
+    font-size:16px;
+    font-weight:bold;
+  }
 
-    .item-img {
-        width: 100%;
-        height: 100%;
-        object-fit: cover;
-        display: block;
-    }
+  .item {
+    border:2px solid #ffffff33;
+    height:120px;
+    overflow:hidden;
+    border-radius:6px;
+    cursor:pointer;
+    background:#1a2530;
+    display:flex;
+    align-items:center;
+    justify-content:center;
+  }
+  .item img,
+  .item video {
+    width:100%;
+    height:100%;
+    object-fit:cover;
+  }
 
-    /* FULLSCREEN VIEWER */
-    #viewer {
-        position: fixed;
-        inset: 0;
-        background: rgba(0,0,0,0.95);
-        display: none;
-        align-items: center;
-        justify-content: center;
-        z-index: 999;
-        flex-direction: column;
-    }
-
-    #viewer img, 
-    #viewer video {
-        max-width: 100%;
-        max-height: 85%;
-        border-radius: 8px;
-    }
-
-    #viewer .date {
-        margin-top: 10px;
-        font-size: 16px;
-        opacity: 0.8;
-    }
-
+  #fs {
+    display:none;
+    position:fixed;
+    inset:0;
+    background:rgba(0,0,0,0.95);
+    z-index:2000;
+    justify-content:center;
+    align-items:center;
+    flex-direction:column;
+  }
+  #fs img, #fs video {
+    max-width:100%;
+    max-height:80%;
+  }
+  #fs .date {
+    margin-top:12px;
+    font-size:18px;
+  }
 </style>
 </head>
 <body>
 
-<div id="content"></div>
+<header>
+  <div id="btnSorted">Сортированное</div>
+  <div id="btnUnsorted">Несортированное</div>
+</header>
 
-<div id="viewer" onclick="closeViewer()">
-    <div id="viewerMedia"></div>
-    <div class="date" id="viewerDate"></div>
+<div id="gallery"></div>
+
+<div id="fs">
+  <div id="fsContent"></div>
+  <div class="date" id="fsDate"></div>
 </div>
 
 <script>
-// records.json будет подгружаться автоматически с GitHub Pages
+const BOT_TOKEN = "8352798938:AAGnDHDe2aIrqxbqsY-9U_3I30L1qxoVAYA"; // вставь сюда токен
+let data = [];
+let sorted = true;
+
+// Загружаем JSON с датами
 fetch("records.json")
-    .then(r => r.json())
-    .then(records => render(records));
+  .then(r=>r.json())
+  .then(j=>{ data=j; render(); });
 
-function render(records) {
-    const content = document.getElementById("content");
+// Рендер галереи
+function render() {
+  const g = document.getElementById("gallery");
+  g.innerHTML = "";
 
-    // группировка по году
-    const groups = {};
-    for (const r of records) {
-        const year = (r.created_at || "").slice(0, 4);
-        if (!groups[year]) groups[year] = [];
-        groups[year].push(r);
+  let arr = sorted ? data.filter(x=>x.created_at) : data.filter(x=>!x.created_at);
+  let currentYear = "";
+
+  arr.forEach(item=>{
+    let year = item.created_at ? new Date(item.created_at).getFullYear() : "???";
+
+    if(year !== currentYear){
+      currentYear = year;
+      const y = document.createElement("div");
+      y.className = "year";
+      y.textContent = year;
+      g.appendChild(y);
     }
 
-    // рисуем по годам
-    for (const year of Object.keys(groups).sort().reverse()) {
-        const h = document.createElement("h2");
-        h.className = "year";
-        h.textContent = year;
-        content.appendChild(h);
+    const div = document.createElement("div");
+    div.className = "item";
 
-        const grid = document.createElement("div");
-        grid.className = "grid";
+    // Получаем прямой URL файла через getFile
+    const fileUrl = `https://api.telegram.org/bot${BOT_TOKEN}/getFile?file_id=${item.src_file_id}`;
 
-        for (const rec of groups[year]) {
-            const item = document.createElement("div");
-            item.className = "item";
+    if(item.type === "photo") {
+      const img = document.createElement("img");
+      // Telegram возвращает JSON, нужен file_path, поэтому используем fetch
+      fetch(fileUrl)
+        .then(r=>r.json())
+        .then(j=>{
+          if(j.ok && j.result && j.result.file_path){
+            img.src = `https://api.telegram.org/file/bot${BOT_TOKEN}/${j.result.file_path}`;
+          }
+        });
+      div.appendChild(img);
+    } else if(item.type === "video") {
+      const v = document.createElement("video");
+      v.muted = true;
+      v.loop = true;
+      v.autoplay = true;
+      fetch(fileUrl)
+        .then(r=>r.json())
+        .then(j=>{
+          if(j.ok && j.result && j.result.file_path){
+            v.src = `https://api.telegram.org/file/bot${BOT_TOKEN}/${j.result.file_path}`;
+          }
+        });
+      div.appendChild(v);
+    }
 
-            if (rec.type === "photo") {
-                const img = document.createElement("img");
-                img.src = rec.local_path;        // <-- ИСПОЛЬЗУЕМ ЛОКАЛЬНЫЙ ФАЙЛ
-                img.className = "item-img";
-                img.onclick = () => openViewer(img.src, rec.created_at, false);
-                item.appendChild(img);
-            } 
-            else if (rec.type === "video") {
-                const video = document.createElement("video");
-                video.src = rec.local_path;
-                video.className = "item-img";
-                video.muted = true;
-                video.loop = true;
-                video.play();
-                video.onclick = () => openViewer(video.src, rec.created_at, true);
-                item.appendChild(video);
-            }
+    div.onclick = ()=>openFS(item);
+    g.appendChild(div);
+  });
+}
 
-            grid.appendChild(item);
+// Fullscreen открытие
+function openFS(item){
+  const fs = document.getElementById("fs");
+  const c = document.getElementById("fsContent");
+  const d = document.getElementById("fsDate");
+
+  c.innerHTML = "";
+  d.textContent = item.created_at ? new Date(item.created_at).toLocaleString() : "";
+
+  const fileUrl = `https://api.telegram.org/bot${BOT_TOKEN}/getFile?file_id=${item.src_file_id}`;
+
+  if(item.type === "photo") {
+    const img = document.createElement("img");
+    fetch(fileUrl)
+      .then(r=>r.json())
+      .then(j=>{
+        if(j.ok && j.result && j.result.file_path){
+          img.src = `https://api.telegram.org/file/bot${BOT_TOKEN}/${j.result.file_path}`;
         }
+      });
+    c.appendChild(img);
+  } else if(item.type === "video") {
+    const v = document.createElement("video");
+    v.controls = true;
+    v.autoplay = true;
+    fetch(fileUrl)
+      .then(r=>r.json())
+      .then(j=>{
+        if(j.ok && j.result && j.result.file_path){
+          v.src = `https://api.telegram.org/file/bot${BOT_TOKEN}/${j.result.file_path}`;
+        }
+      });
+    c.appendChild(v);
+  }
 
-        content.appendChild(grid);
-    }
+  fs.style.display = "flex";
 }
 
-function openViewer(src, date, isVideo) {
-    const viewer = document.getElementById("viewer");
-    const media = document.getElementById("viewerMedia");
-    const d = document.getElementById("viewerDate");
+document.getElementById("fs").onclick = ()=>(
+  document.getElementById("fs").style.display="none"
+);
 
-    media.innerHTML = "";
-
-    if (isVideo) {
-        const v = document.createElement("video");
-        v.src = src;
-        v.controls = true;
-        v.autoplay = true;
-        media.appendChild(v);
-    } else {
-        const i = document.createElement("img");
-        i.src = src;
-        media.appendChild(i);
-    }
-
-    d.textContent = date.replace("T", " ").replace("Z", "");
-    viewer.style.display = "flex";
-}
-
-function closeViewer() {
-    const viewer = document.getElementById("viewer");
-    const media = document.getElementById("viewerMedia");
-    viewer.style.display = "none";
-    media.innerHTML = "";
-}
+document.getElementById("btnSorted").onclick = ()=>{ sorted=true; render(); };
+document.getElementById("btnUnsorted").onclick = ()=>{ sorted=false; render(); };
 </script>
 
 </body>
