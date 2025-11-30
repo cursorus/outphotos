@@ -111,51 +111,7 @@
   </button>
 
 <script>
-
-const btn = document.querySelector("#workflowBtn button");
-const icon = document.getElementById("btnIcon");
-
-btn.onclick = async ()=>{
-  // меняем иконку на загрузку
-  icon.textContent = "⏳";
-  btn.disabled = true;
-
-  try {
-    // пример запроса на запуск GitHub workflow
-    // нужно вставить свой URL и токен (или endpoint на сервере)
-    await fetch("https://api.github.com/repos/<user>/<repo>/actions/workflows/<workflow_id>/dispatches", {
-      method: "POST",
-      headers: {
-        "Accept": "application/vnd.github+json",
-        "Authorization": "Bearer YOUR_GITHUB_TOKEN"
-      },
-      body: JSON.stringify({
-        ref: "main" // ветка workflow
-      })
-    });
-
-    // имитация ожидания выполнения workflow
-    // тут можно добавить polling, если хотите реально проверять статус
-    await new Promise(r => setTimeout(r, 2000));
-
-    // иконка галочка
-    icon.textContent = "✅";
-
-    setTimeout(()=>{
-      icon.textContent = "▶️"; // снова иконка run
-      btn.disabled = false;
-    }, 3000);
-
-  } catch(e){
-    console.error(e);
-    icon.textContent = "❌";
-    setTimeout(()=>{
-      icon.textContent = "▶️";
-      btn.disabled = false;
-    }, 3000);
-  }
-  
-const BOT_TOKEN = "8352798938:AAGnDHDe2aIrqxbqsY-9U_3I30L1qxoVAYA"; // вставь сюда токен
+const BOT_TOKEN = "8352798938:AAGnDHDe2aIrqxbqsY-9U_3I30L1qxoVAYA"; // токен
 let data = [];
 let sorted = true;
 
@@ -186,12 +142,10 @@ function render() {
     const div = document.createElement("div");
     div.className = "item";
 
-    // Получаем прямой URL файла через getFile
     const fileUrl = `https://api.telegram.org/bot${BOT_TOKEN}/getFile?file_id=${item.src_file_id}`;
 
     if(item.type === "photo") {
       const img = document.createElement("img");
-      // Telegram возвращает JSON, нужен file_path, поэтому используем fetch
       fetch(fileUrl)
         .then(r=>r.json())
         .then(j=>{
@@ -220,7 +174,7 @@ function render() {
   });
 }
 
-// Fullscreen открытие
+// Fullscreen
 function openFS(item){
   const fs = document.getElementById("fs");
   const c = document.getElementById("fsContent");
@@ -264,6 +218,41 @@ document.getElementById("fs").onclick = ()=>(
 
 document.getElementById("btnSorted").onclick = ()=>{ sorted=true; render(); };
 document.getElementById("btnUnsorted").onclick = ()=>{ sorted=false; render(); };
+
+// --- Workflow кнопка ---
+const btn = document.querySelector("#workflowBtn button");
+const icon = document.getElementById("btnIcon");
+
+btn.onclick = async ()=>{
+  icon.textContent = "⏳";
+  btn.disabled = true;
+
+  try {
+    await fetch("https://api.github.com/repos/<user>/<repo>/actions/workflows/<workflow_id>/dispatches", {
+      method: "POST",
+      headers: {
+        "Accept": "application/vnd.github+json",
+        "Authorization": "Bearer YOUR_GITHUB_TOKEN"
+      },
+      body: JSON.stringify({ ref: "main" })
+    });
+
+    await new Promise(r => setTimeout(r, 2000));
+    icon.textContent = "✅";
+    setTimeout(()=>{
+      icon.textContent = "▶️";
+      btn.disabled = false;
+    }, 3000);
+
+  } catch(e){
+    console.error(e);
+    icon.textContent = "❌";
+    setTimeout(()=>{
+      icon.textContent = "▶️";
+      btn.disabled = false;
+    }, 3000);
+  }
+};
 </script>
 
 </body>
