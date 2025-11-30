@@ -97,7 +97,6 @@ header div.active{ background:#111; }
   box-shadow: 0 10px 30px rgba(0,0,0,0.6);
 }
 
-/* bottom panel with actions */
 #fsPanel{
   position:fixed;
   left:0;
@@ -130,7 +129,6 @@ header div.active{ background:#111; }
 }
 .panelBtn svg{ width:18px; height:18px; flex:0 0 18px; }
 
-/* Run workflow button at bottom of page (separate) */
 #runWrap{ display:flex; justify-content:center; padding:12px; }
 #runBtn{
   display:inline-flex;
@@ -146,11 +144,9 @@ header div.active{ background:#111; }
 }
 #runIcon{ width:18px; height:18px; display:inline-block; }
 
-/* spinner */
 @keyframes spin { to { transform: rotate(360deg); } }
 .icon-spinner{ animation: spin 1s linear infinite; }
 
-/* small helpers */
 .hidden{ display:none !important; }
 .center{ display:flex; align-items:center; justify-content:center; }
 </style>
@@ -164,68 +160,46 @@ header div.active{ background:#111; }
 
 <div id="gallery"></div>
 
-<!-- fullscreen viewer -->
 <div id="fs" onclick="fsClose(event)">
   <div class="media-wrap" id="fsMediaWrap"></div>
   <div id="fsDate" style="color:#ddd; text-align:center; margin-top:12px;"></div>
-
-  <!-- panel (appears from bottom) -->
   <div id="fsPanel">
-    <button class="panelBtn" id="downloadBtn" title="Скачать">
-      <svg viewBox="0 0 24 24" fill="none" stroke="currentColor"><path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4" stroke-width="1.6" stroke-linecap="round" stroke-linejoin="round"/><polyline points="7 10 12 15 17 10" stroke-width="1.6" stroke-linecap="round" stroke-linejoin="round"/><line x1="12" y1="15" x2="12" y2="3" stroke-width="1.6" stroke-linecap="round" stroke-linejoin="round"/></svg>
-      Скачать
-    </button>
-
-    <button class="panelBtn" id="deleteBtn" title="Удалить из галереи">
-      <svg viewBox="0 0 24 24" fill="none" stroke="currentColor"><polyline points="3 6 5 6 21 6" stroke-width="1.6" stroke-linecap="round" stroke-linejoin="round"/><path d="M19 6l-1 14a2 2 0 0 1-2 2H8a2 2 0 0 1-2-2L5 6" stroke-width="1.6" stroke-linecap="round" stroke-linejoin="round"/><path d="M10 11v6" stroke-width="1.6" stroke-linecap="round" stroke-linejoin="round"/><path d="M14 11v6" stroke-width="1.6" stroke-linecap="round" stroke-linejoin="round"/></svg>
-      Удалить
-    </button>
+    <button class="panelBtn" id="downloadBtn" title="Скачать">Скачать</button>
+    <button class="panelBtn" id="deleteBtn" title="Удалить из галереи">Удалить</button>
   </div>
 </div>
 
-<!-- run workflow -->
 <div id="runWrap">
   <button id="runBtn" title="Запустить workflow">
-    <span id="runIcon"><svg id="runSvg" viewBox="0 0 24 24" fill="none" stroke="currentColor"><polygon points="5 3 19 12 5 21 5 3" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round"/></svg></span>
+    <span id="runIcon">▶</span>
     <span id="runText">Запустить workflow</span>
   </button>
 </div>
 
 <script>
-const BOT_TOKEN = ""; // optional
-
 let data = [];
 let sorted = true;
-const filePathCache = {};
 const deletedIdsKey = "outphotos_deleted_ids";
 let deletedIds = new Set(JSON.parse(localStorage.getItem(deletedIdsKey) || "[]"));
 
+// Загрузка records.json
 async function loadRecords(){
   try{
-    const r = await fetch("records.json");
+    const r = await fetch("/records.json");
     if(!r.ok) return;
     data = await r.json();
     render();
   }catch(e){ console.error(e); }
 }
 
-async function getTelegramFilePath(file_id){
-  if(filePathCache[file_id] !== undefined) return filePathCache[file_id];
-  if(!BOT_TOKEN) { filePathCache[file_id] = null; return null; }
+// Получение прямого URL к файлу через backend endpoint
+async function getFileUrl(file_id){
   try{
-    const res = await fetch(`https://api.telegram.org/bot${BOT_TOKEN}/getFile?file_id=${encodeURIComponent(file_id)}`);
+    const res = await fetch(`/api/get-file?file_id=${encodeURIComponent(file_id)}`);
+    if(!res.ok) return null;
     const j = await res.json();
-    if(j.ok && j.result && j.result.file_path){
-      filePathCache[file_id] = j.result.file_path;
-      return j.result.file_path;
-    } else {
-      filePathCache[file_id] = null;
-      return null;
-    }
-  }catch(e){
-    filePathCache[file_id] = null;
-    return null;
-  }
+    return j.url;  // backend возвращает { url: "..." }
+  }catch(e){ return null; }
 }
 
 async function render(){
@@ -248,30 +222,28 @@ async function render(){
     div.className = "item";
     const placeholder = document.createElement("div");
     placeholder.className = "placeholder";
-    placeholder.innerHTML = `<svg viewBox="0 0 24 24" width="56" height="56" fill="none" stroke="currentColor"><rect x="3" y="3" width="18" height="18" rx="2" ry="2" stroke-width="1.4"/><path d="M8 14l2.5-3 2 2.5L16 10l3 4H8z" stroke-width="1.4" stroke-linejoin="round"/></svg>`;
+    placeholder.innerHTML = "⏳"; // простой placeholder
     div.appendChild(placeholder);
+    g.appendChild(div);
 
     (async ()=>{
-      const fp = await getTelegramFilePath(item.src_file_id);
-      if(!fp){ div.remove(); return; }
-      const url = `https://api.telegram.org/file/bot${BOT_TOKEN}/${fp}`;
+      const url = await getFileUrl(item.src_file_id);
+      if(!url){ div.remove(); return; }
       div.innerHTML = "";
-      if(item.type === "photo"){
+      if(item.type==="photo"){
         const img = document.createElement("img");
         img.src = url;
         div.appendChild(img);
-      } else if(item.type === "video"){
-        const img = document.createElement("img");
-        img.src = url + ".jpg";
-        img.onerror = ()=>{ img.src = url; };
-        div.appendChild(img);
+      } else if(item.type==="video"){
+        const v = document.createElement("video");
+        v.src = url;
+        v.controls = true;
+        div.appendChild(v);
       } else {
-        div.innerHTML = "<div style='padding:8px;color:var(--muted)'>Unsupported</div>";
+        div.innerHTML = "<div style='padding:8px;color:#aaa'>Unsupported</div>";
       }
+      div.onclick = ()=>openFS(item);
     })();
-
-    div.onclick = ()=>openFS(item);
-    g.appendChild(div);
   }
 }
 
@@ -282,63 +254,59 @@ async function openFS(item){
   wrap.innerHTML = "";
   dateEl.textContent = item.created_at ? new Date(item.created_at).toLocaleString() : "";
   fs.style.display = "flex";
-  requestAnimationFrame(()=> fs.classList.add("showPanel"));
 
-  const fp = await getTelegramFilePath(item.src_file_id);
-  if(!fp){ setTimeout(closeViewerImmediate,300); return; }
-  const url = `https://api.telegram.org/file/bot${BOT_TOKEN}/${fp}`;
+  const url = await getFileUrl(item.src_file_id);
+  if(!url){ closeViewerImmediate(); return; }
 
   if(item.type==="photo"){
-    const img=document.createElement("img");
-    img.src=url;
+    const img = document.createElement("img");
+    img.src = url;
     wrap.appendChild(img);
     setupDownloadButton(url,item);
     setupDeleteButton(item);
   } else if(item.type==="video"){
-    const v=document.createElement("video");
-    v.src=url; v.controls=true; v.autoplay=true;
-    v.style.maxHeight="calc(100vh - 160px)";
+    const v = document.createElement("video");
+    v.src = url;
+    v.controls = true;
+    v.autoplay = true;
     wrap.appendChild(v);
     setupDownloadButton(url,item);
     setupDeleteButton(item);
-  } else wrap.innerHTML="<div style='color:var(--muted)'>Неподдерживаемый тип</div>";
+  }
 }
 
 function closeViewerImmediate(){
   const fs = document.getElementById("fs");
-  fs.classList.remove("showPanel");
   fs.style.display = "none";
   document.getElementById("fsMediaWrap").innerHTML="";
 }
 
 function fsClose(e){
-  const panel=document.getElementById("fsPanel");
-  const mediaWrap=document.getElementById("fsMediaWrap");
-  if(panel.contains(e.target) || mediaWrap.contains(e.target)) return;
+  const panel = document.getElementById("fsPanel");
+  const wrap = document.getElementById("fsMediaWrap");
+  if(panel.contains(e.target) || wrap.contains(e.target)) return;
   closeViewerImmediate();
 }
 
-function setupDownloadButton(fileUrl,item){
-  const btn=document.getElementById("downloadBtn");
-  btn.onclick=async e=>{
+function setupDownloadButton(url,item){
+  const btn = document.getElementById("downloadBtn");
+  btn.onclick = e=>{
     e.stopPropagation();
-    try{
-      const res=await fetch(fileUrl);
-      const blob=await res.blob();
-      const ext=item.type==="photo"?".jpg":".mp4";
-      const name=`outphoto_${item.src_msg_id}${ext}`;
-      const urlObj=URL.createObjectURL(blob);
-      const a=document.createElement("a"); a.href=urlObj; a.download=name; document.body.appendChild(a); a.click(); a.remove(); URL.revokeObjectURL(urlObj);
-    }catch(err){ console.error(err); alert("Не удалось скачать файл"); }
+    const a = document.createElement("a");
+    a.href = url;
+    a.download = `outphoto_${item.src_msg_id}${item.type==="photo"?".jpg":".mp4"}`;
+    document.body.appendChild(a);
+    a.click();
+    a.remove();
   };
 }
 
 function setupDeleteButton(item){
-  const btn=document.getElementById("deleteBtn");
-  btn.onclick=e=>{
+  const btn = document.getElementById("deleteBtn");
+  btn.onclick = e=>{
     e.stopPropagation();
     deletedIds.add(item.src_msg_id);
-    localStorage.setItem(deletedIdsKey,JSON.stringify([...deletedIds]));
+    localStorage.setItem(deletedIdsKey, JSON.stringify([...deletedIds]));
     render();
     closeViewerImmediate();
   };
@@ -357,39 +325,12 @@ document.getElementById("btnUnsorted").onclick=()=>{
   render();
 };
 
-// workflow trigger
-const runBtn=document.getElementById("runBtn");
-const runIconWrap=document.getElementById("runIcon");
-const runText=document.getElementById("runText");
+// workflow trigger stub
+document.getElementById("runBtn").onclick=()=>{
+  alert("Запуск workflow через backend (не реализован в фронтенде)");
+};
 
-async function runWorkflow(){
-  // dispatcher uses repository_dispatch without exposing token
-  runIconWrap.innerHTML=`<svg class="icon-spinner" viewBox="0 0 50 50"><circle cx="25" cy="25" r="20" stroke="white" stroke-width="4" stroke-linecap="round" fill="none" stroke-dasharray="31.4 31.4"/></svg>`;
-  runBtn.disabled=true;
-  runText.textContent="Запущен...";
-
-  try{
-    const resp = await fetch("/.netlify/functions/dispatch-workflow", { method:"POST" });
-    if(!resp.ok) throw new Error(resp.statusText);
-    runIconWrap.innerHTML=`<svg viewBox="0 0 24 24" fill="none" stroke="currentColor"><path d="M20 6L9 17l-5-5" stroke-width="1.6" stroke-linecap="round" stroke-linejoin="round"/></svg>`;
-    runText.textContent="Готово";
-  }catch(err){
-    console.error(err);
-    runIconWrap.innerHTML=`<svg viewBox="0 0 24 24" fill="none" stroke="currentColor"><path d="M18 6L6 18M6 6l12 12" stroke-width="1.6" stroke-linecap="round" stroke-linejoin="round"/></svg>`;
-    runText.textContent="Ошибка";
-  }finally{
-    setTimeout(()=>{
-      runIconWrap.innerHTML=`<svg id="runSvg" viewBox="0 0 24 24" fill="none" stroke="currentColor"><polygon points="5 3 19 12 5 21 5 3" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round"/></svg>`;
-      runText.textContent="Запустить workflow";
-      runBtn.disabled=false;
-      loadRecords();
-    },3000);
-  }
-}
-
-runBtn.onclick=runWorkflow;
-
-// initial
+// initial load
 loadRecords();
 </script>
 </body>
