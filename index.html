@@ -1,313 +1,297 @@
-<!DOCTYPE html>
+<!doctype html>
 <html lang="ru">
 <head>
-<meta charset="UTF-8">
-<title>Галерея</title>
+<meta charset="utf-8" />
+<meta name="viewport" content="width=device-width,initial-scale=1" />
+<title>Gallery with Albums</title>
 <style>
-    body {
-        font-family: sans-serif;
-        margin: 0;
-        background: #111;
-        color: #fff;
-    }
+:root{
+  --bg:#1c1c1c;
+  --panel:#0f1720;
+  --accent:#60a5fa;
+  --muted:#9aa4b2;
+}
+body{
+  margin:0;
+  background:var(--bg);
+  color:#fff;
+  font-family:system-ui,-apple-system,BlinkMacSystemFont,"Segoe UI",Roboto,"Helvetica Neue",Arial;
+}
+header{
+  display:flex;
+  gap:18px;
+  padding:10px;
+  font-size:17px;
+}
+header div{
+  cursor:pointer;
+  user-select:none;
+  padding:6px 8px;
+  border-radius:8px;
+  display:flex;
+  align-items:center;
+  gap:6px;
+}
+header div.active{ background:#111; }
 
-    /* Панель альбомов */
-    #albumsBar {
-        display: flex;
-        align-items: center;
-        background: #1a1a1a;
-        padding: 10px;
-        border-bottom: 1px solid #333;
-        gap: 10px;
-        position: sticky;
-        top: 0;
-        z-index: 50;
-    }
+#gallery{
+  display:grid;
+  grid-template-columns:repeat(3,1fr);
+  gap:4px;
+  padding:6px;
+}
 
-    #albumsBar button {
-        background: #2c2c2c;
-        border: 1px solid #444;
-        color: #fff;
-        padding: 6px 12px;
-        border-radius: 6px;
-        cursor: pointer;
-    }
+.year{
+  grid-column:1/-1;
+  text-align:left;
+  padding:6px 4px;
+  font-size:18px;
+  font-weight:700;
+}
 
-    #albumsBar button.active {
-        background: #4a4a4a;
-    }
+.item{
+  border:2px solid rgba(255,255,255,0.06);
+  height:120px;
+  border-radius:8px;
+  cursor:pointer;
+  background:#131313;
+  display:flex;
+  align-items:center;
+  justify-content:center;
+  position:relative;
+}
+.item img, .item video{
+  width:100%;
+  height:100%;
+  object-fit:cover;
+}
 
-    /* Галочка выбора */
-    #selectModeBtn {
-        font-size: 20px;
-        padding: 4px 10px;
-    }
+/* checkbox for selecting items */
+.item input[type="checkbox"]{
+  position:absolute;
+  top:6px;
+  left:6px;
+  width:20px;
+  height:20px;
+  z-index:10;
+}
 
-    /* Галерея */
-    #gallery {
-        display: grid;
-        grid-template-columns: repeat(auto-fill, minmax(180px, 1fr));
-        gap: 12px;
-        padding: 12px;
-    }
+/* Fullscreen */
+#fs{
+  display:none;
+  position:fixed;
+  inset:0;
+  background:rgba(0,0,0,0.96);
+  z-index:1200;
+  justify-content:center;
+  align-items:flex-start;
+  flex-direction:column;
+  padding-top:28px;
+}
+#fs .media-wrap{
+  width:100%;
+  display:flex;
+  justify-content:center;
+  align-items:center;
+}
+#fs img, #fs video{
+  width: calc(100vw - 24px);
+  height: auto;
+  max-height: calc(100vh - 160px);
+  border-radius:8px;
+  box-shadow: 0 10px 30px rgba(0,0,0,0.6);
+}
+#fsPanel{
+  position:fixed;
+  left:0;
+  right:0;
+  bottom:0;
+  display:flex;
+  justify-content:center;
+  padding:18px;
+  box-sizing:border-box;
+  transform: translateY(110%);
+  transition: transform 320ms cubic-bezier(.2,.9,.3,1);
+  z-index:1250;
+}
+#fs.showPanel #fsPanel{ transform: translateY(0); }
 
-    .item {
-        background: #222;
-        padding: 6px;
-        border-radius: 8px;
-        position: relative;
-    }
+.panelBtn{
+  display:inline-flex;
+  align-items:center;
+  gap:10px;
+  padding:10px 14px;
+  background: linear-gradient(180deg, rgba(255,255,255,0.03), rgba(255,255,255,0.01));
+  color:#fff;
+  border:none;
+  border-radius:12px;
+  font-weight:600;
+  cursor:pointer;
+  margin:0 8px;
+  min-width:140px;
+  justify-content:center;
+}
 
-    .item img, .item video {
-        width: 100%;
-        border-radius: 6px;
-        background: #333;
-    }
-
-    /* Чекбокс выбора медиа */
-    .selectBox {
-        position: absolute;
-        top: 6px;
-        left: 6px;
-        width: 22px;
-        height: 22px;
-        background: rgba(255,255,255,0.8);
-        border-radius: 4px;
-        display: none;
-        align-items: center;
-        justify-content: center;
-        color: #000;
-        font-size: 16px;
-        font-weight: bold;
-        cursor: pointer;
-    }
-
-    .selected .selectBox {
-        background: #4caf50 !important;
-        color: #fff !important;
-    }
-
-    /* Панель назначения альбома */
-    #assignPanel {
-        display: none;
-        padding: 10px;
-        background: #1a1a1a;
-        border-top: 1px solid #333;
-        position: sticky;
-        bottom: 0;
-        z-index: 50;
-    }
-
-    /* Консоль */
-    #consolePanel {
-        background: #000;
-        color: #0f0;
-        font-family: monospace;
-        padding: 10px;
-        height: 200px;
-        overflow-y: auto;
-        display: none;
-        border-top: 3px solid #444;
-    }
-
-    #toggleConsole {
-        position: fixed;
-        bottom: 20px;
-        right: 20px;
-        background: #222;
-        border: 1px solid #555;
-        color: #fff;
-        padding: 10px 14px;
-        border-radius: 50%;
-        font-size: 20px;
-        cursor: pointer;
-        z-index: 100;
-    }
+/* Albums panel */
+#albumsPanel{
+  display:flex;
+  gap:12px;
+  padding:10px;
+  background:#0b1220;
+}
+#albumsPanel div{
+  padding:6px 12px;
+  cursor:pointer;
+  border-radius:6px;
+}
+#albumsPanel div.active{ background:#111; }
 </style>
 </head>
 <body>
 
-<!-- Панель альбомов -->
-<div id="albumsBar">
-    <button id="selectModeBtn">☑</button>
-    <button class="albumBtn active" data-album="all">Все</button>
-    <div id="albumsContainer"></div>
+<!-- Albums panel -->
+<div id="albumsPanel">
+  <div data-album="all" class="active">Все</div>
 </div>
 
-<!-- Галерея -->
 <div id="gallery"></div>
 
-<!-- Панель выбора альбома для добавления -->
-<div id="assignPanel">
-    <span>Добавить выбранные элементы в альбом:</span>
-    <select id="assignSelect"></select>
+<!-- fullscreen viewer -->
+<div id="fs" onclick="fsClose(event)">
+  <div class="media-wrap" id="fsMediaWrap"></div>
+  <div id="fsDate" style="color:#ddd; text-align:center; margin-top:12px;"></div>
+  <div id="fsPanel">
+    <button class="panelBtn" id="downloadBtn" title="Скачать">Скачать</button>
+    <button class="panelBtn" id="deleteBtn" title="Удалить">Удалить</button>
+  </div>
 </div>
 
-<!-- Консоль -->
-<div id="consolePanel"></div>
-
-<button id="toggleConsole">🖥</button>
-
 <script>
-function log(msg) {
-    const p = document.createElement("div");
-    p.textContent = "[LOG] " + msg;
-    document.getElementById("consolePanel").appendChild(p);
-}
-log("Панель консоли загружена");
+const BOT_TOKEN = "<ВАШ_BOT_TOKEN>";
+let data = [];
+let albums = { all: [] };
+let currentAlbum = "all";
+let selectedItems = new Set();
 
-let records = [];
-let albums = [];
-let selectMode = false;
-let selected = new Set();
-
-async function loadRecords() {
-    log("Загрузка records.json...");
+// fetch records.json
+async function loadRecords(){
+  try{
     const res = await fetch("records.json");
-    log("Статус ответа: " + res.status);
-    records = await res.json();
-    log("Загружено записей: " + records.length);
-
-    collectAlbums();
-    renderAlbumButtons();
-    updateAssignList();
+    const j = await res.json();
+    data = j;
+    albums["all"] = data.map(x=>x.src_msg_id);
+    renderAlbums();
     renderGallery();
+    console.log("[LOG] Загружено", data.length, "элементов");
+  }catch(e){ console.error(e); }
 }
 
-function collectAlbums() {
-    const set = new Set();
-    records.forEach(r => {
-        if (r.album) set.add(r.album);
-    });
-    albums = Array.from(set).sort();
+// Telegram API helper
+async function getTelegramFileUrl(file_id){
+  if(!BOT_TOKEN) return null;
+  try{
+    const res = await fetch(`https://api.telegram.org/bot${BOT_TOKEN}/getFile?file_id=${file_id}`);
+    const j = await res.json();
+    if(j.ok && j.result && j.result.file_path){
+      return `https://api.telegram.org/file/bot${BOT_TOKEN}/${j.result.file_path}`;
+    }
+  } catch(e){ console.error("Ошибка getFile:", e); }
+  return null;
 }
 
-function renderAlbumButtons() {
-    const container = document.getElementById("albumsContainer");
-    container.innerHTML = "";
-    albums.forEach(a => {
-        const b = document.createElement("button");
-        b.className = "albumBtn";
-        b.dataset.album = a;
-        b.textContent = a;
-        container.appendChild(b);
-    });
+// render albums panel
+function renderAlbums(){
+  const panel = document.getElementById("albumsPanel");
+  panel.innerHTML = "";
+  Object.keys(albums).forEach(name=>{
+    const div = document.createElement("div");
+    div.textContent = name;
+    div.dataset.album = name;
+    if(name===currentAlbum) div.classList.add("active");
+    div.onclick = ()=>{ currentAlbum=name; renderAlbums(); renderGallery(); };
+    panel.appendChild(div);
+  });
 }
 
-function updateAssignList() {
-    const sel = document.getElementById("assignSelect");
-    sel.innerHTML = "";
-    albums.forEach(a => {
-        const opt = document.createElement("option");
-        opt.value = a;
-        opt.textContent = a;
-        sel.appendChild(opt);
-    });
-}
-
-function renderGallery(currentAlbum = "all") {
-    log("Рендер галереи…");
-
-    const g = document.getElementById("gallery");
-    g.innerHTML = "";
-
-    let list = records;
-    if (currentAlbum !== "all") {
-        list = records.filter(r => r.album === currentAlbum);
+// render gallery
+async function renderGallery(){
+  const g = document.getElementById("gallery");
+  g.innerHTML = "";
+  const arr = data.filter(x=>albums[currentAlbum].includes(x.src_msg_id));
+  let currentYear = "";
+  for(const item of arr){
+    const year = item.created_at ? new Date(item.created_at).getFullYear() : "???";
+    if(year!==currentYear){
+      currentYear = year;
+      const y = document.createElement("div");
+      y.className = "year";
+      y.textContent = year;
+      g.appendChild(y);
     }
 
-    log("Элементов в списке: " + list.length);
+    const div = document.createElement("div");
+    div.className = "item";
 
-    list.forEach(item => {
-        const div = document.createElement("div");
-        div.className = "item";
-        div.dataset.id = item.src_msg_id;
+    const checkbox = document.createElement("input");
+    checkbox.type="checkbox";
+    checkbox.checked = selectedItems.has(item.src_msg_id);
+    checkbox.onchange = e=>{
+      e.stopPropagation();
+      if(checkbox.checked) selectedItems.add(item.src_msg_id);
+      else selectedItems.delete(item.src_msg_id);
+    }
+    div.appendChild(checkbox);
 
-        const sbox = document.createElement("div");
-        sbox.className = "selectBox";
-        sbox.textContent = "✓";
-        div.appendChild(sbox);
+    const url = await getTelegramFileUrl(item.src_file_id);
+    if(!url) continue;
 
-        let url = item.file_path || item.local_path || item.download_url || item.src_file_id;
+    if(item.type==="photo"){
+      const img = document.createElement("img");
+      img.src = url;
+      div.appendChild(img);
+    } else if(item.type==="video"){
+      const v = document.createElement("video");
+      v.src = url;
+      v.autoplay=true;
+      v.loop=true;
+      v.muted=true;
+      div.appendChild(v);
+    }
 
-        if (item.type === "photo") {
-            const img = document.createElement("img");
-            img.src = url;
-            img.loading = "lazy";
-            div.appendChild(img);
-        } else if (item.type === "video") {
-            const video = document.createElement("video");
-            video.src = url;
-            video.controls = true;
-            div.appendChild(video);
-        }
-
-        div.addEventListener("click", () => {
-            if (!selectMode) return;
-
-            if (selected.has(item.src_msg_id)) {
-                selected.delete(item.src_msg_id);
-                div.classList.remove("selected");
-            } else {
-                selected.add(item.src_msg_id);
-                div.classList.add("selected");
-            }
-        });
-
-        g.appendChild(div);
-    });
+    div.onclick = ()=>openFS(item);
+    g.appendChild(div);
+  }
 }
 
-/* Выбор альбома */
-document.addEventListener("click", e => {
-    if (e.target.classList.contains("albumBtn")) {
-        document.querySelectorAll(".albumBtn").forEach(b => b.classList.remove("active"));
-        e.target.classList.add("active");
-        const album = e.target.dataset.album;
-        renderGallery(album);
-    }
-});
+// Fullscreen
+async function openFS(item){
+  const fs = document.getElementById("fs");
+  const wrap = document.getElementById("fsMediaWrap");
+  const dateEl = document.getElementById("fsDate");
+  wrap.innerHTML = "";
+  dateEl.textContent = item.created_at ? new Date(item.created_at).toLocaleString() : "";
 
-/* Включение режима выбора */
-document.getElementById("selectModeBtn").addEventListener("click", () => {
-    selectMode = !selectMode;
-    selected.clear();
+  const url = await getTelegramFileUrl(item.src_file_id);
+  if(!url) return;
 
-    if (selectMode) {
-        document.querySelectorAll(".selectBox").forEach(b => b.style.display = "flex");
-        document.getElementById("assignPanel").style.display = "block";
-        document.getElementById("selectModeBtn").style.background = "#4a4a4a";
-    } else {
-        document.querySelectorAll(".selectBox").forEach(b => b.style.display = "none");
-        document.getElementById("assignPanel").style.display = "none";
-        document.querySelectorAll(".item").forEach(i => i.classList.remove("selected"));
-        document.getElementById("selectModeBtn").style.background = "";
-    }
-});
+  if(item.type==="photo"){
+    const img=document.createElement("img");
+    img.src=url;
+    wrap.appendChild(img);
+  } else if(item.type==="video"){
+    const v=document.createElement("video");
+    v.src=url; v.controls=true; v.autoplay=true;
+    wrap.appendChild(v);
+  }
 
-/* Назначение альбома */
-document.getElementById("assignSelect").addEventListener("change", () => {
-    const album = document.getElementById("assignSelect").value;
+  fs.style.display="flex";
+}
 
-    let patch = [];
+function fsClose(e){
+  if(e.target.id==="fs") document.getElementById("fs").style.display="none";
+}
 
-    selected.forEach(id => {
-        const r = records.find(x => x.src_msg_id == id);
-        if (r) {
-            patch.push({ id: r.src_msg_id, newAlbum: album });
-        }
-    });
-
-    log("PATCH для обновления records.json:");
-    log(JSON.stringify(patch, null, 2));
-});
-
-/* Консоль */
-document.getElementById("toggleConsole").addEventListener("click", () => {
-    const p = document.getElementById("consolePanel");
-    p.style.display = (p.style.display === "block") ? "none" : "block";
-});
-
+// initial load
 loadRecords();
 </script>
 
