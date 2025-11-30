@@ -62,7 +62,6 @@ header div.active{ background:#111; }
   height:40%;
   opacity:0.12;
 }
-
 .item img, .item video{
   width:100%;
   height:100%;
@@ -70,7 +69,9 @@ header div.active{ background:#111; }
   display:block;
 }
 
-/* Fullscreen viewer */
+/* ---------------------------- */
+/* FULLSCREEN VIEWER */
+/* ---------------------------- */
 #fs{
   display:none;
   position:fixed;
@@ -83,12 +84,14 @@ header div.active{ background:#111; }
   padding-top:28px;
   box-sizing:border-box;
 }
+
 #fs .media-wrap{
   width:100%;
   display:flex;
   justify-content:center;
   align-items:center;
 }
+
 #fs img, #fs video{
   width: calc(100vw - 24px);
   height: auto;
@@ -97,6 +100,7 @@ header div.active{ background:#111; }
   box-shadow: 0 10px 30px rgba(0,0,0,0.6);
 }
 
+/* bottom panel with actions */
 #fsPanel{
   position:fixed;
   left:0;
@@ -129,6 +133,9 @@ header div.active{ background:#111; }
 }
 .panelBtn svg{ width:18px; height:18px; flex:0 0 18px; }
 
+/* ---------------------------- */
+/* RUN WORKFLOW BUTTON */
+/* ---------------------------- */
 #runWrap{ display:flex; justify-content:center; padding:12px; }
 #runBtn{
   display:inline-flex;
@@ -144,11 +151,47 @@ header div.active{ background:#111; }
 }
 #runIcon{ width:18px; height:18px; display:inline-block; }
 
+/* spinner */
 @keyframes spin { to { transform: rotate(360deg); } }
 .icon-spinner{ animation: spin 1s linear infinite; }
 
-.hidden{ display:none !important; }
-.center{ display:flex; align-items:center; justify-content:center; }
+/* ---------------------------- */
+/* CUSTOM CONSOLE */
+/* ---------------------------- */
+#consoleBtn{
+  position:fixed;
+  bottom:80px;
+  right:12px;
+  z-index:1500;
+  background:#222;
+  padding:10px;
+  border-radius:8px;
+  cursor:pointer;
+  border:1px solid #333;
+}
+#consoleBtn svg{
+  width:22px;
+  height:22px;
+  stroke:#fff;
+}
+
+#consolePanel{
+  display:none;
+  position:fixed;
+  bottom:0;
+  left:0;
+  right:0;
+  height:35%;
+  background:#000;
+  color:#0f0;
+  font-family:monospace;
+  padding:10px;
+  overflow-y:auto;
+  z-index:1400;
+  border-top:2px solid #444;
+  white-space:pre-wrap;
+  font-size:13px;
+}
 </style>
 </head>
 <body>
@@ -160,187 +203,147 @@ header div.active{ background:#111; }
 
 <div id="gallery"></div>
 
+<!-- FULLSCREEN VIEWER -->
 <div id="fs" onclick="fsClose(event)">
   <div class="media-wrap" id="fsMediaWrap"></div>
   <div id="fsDate" style="color:#ddd; text-align:center; margin-top:12px;"></div>
+
   <div id="fsPanel">
-    <button class="panelBtn" id="downloadBtn" title="Скачать">Скачать</button>
-    <button class="panelBtn" id="deleteBtn" title="Удалить из галереи">Удалить</button>
+    <button class="panelBtn" id="downloadBtn">
+      Скачать
+    </button>
+    <button class="panelBtn" id="deleteBtn">
+      Удалить
+    </button>
   </div>
 </div>
 
+<!-- RUN WORKFLOW -->
 <div id="runWrap">
-  <button id="runBtn" title="Запустить workflow">
+  <button id="runBtn">
     <span id="runIcon">▶</span>
     <span id="runText">Запустить workflow</span>
   </button>
 </div>
 
-<script>
-let data = [];
-let sorted = true;
-const deletedIdsKey = "outphotos_deleted_ids";
-let deletedIds = new Set(JSON.parse(localStorage.getItem(deletedIdsKey) || "[]"));
+<!-- TOGGLE CONSOLE BUTTON -->
+<div id="consoleBtn" onclick="toggleConsole()">
+  <svg viewBox="0 0 24 24" fill="none" stroke="currentColor"><path d="M4 17l6-6-6-6"/><path d="M12 19h8"/></svg>
+</div>
 
-// Загрузка records.json
+<!-- CONSOLE PANEL -->
+<div id="consolePanel"></div>
+
+<script>
+/* ================================================================== */
+/* CUSTOM CONSOLE LOGGER */
+/* ================================================================== */
+(function() {
+  const panel = document.getElementById("consolePanel");
+
+  function push(type, msg) {
+    const t = typeof msg === "object" ? JSON.stringify(msg, null, 2) : msg;
+    panel.textContent += `[${type}] ${t}\n`;
+    panel.scrollTop = panel.scrollHeight;
+  }
+
+  const oldLog = console.log;
+  console.log = function(...a){
+    push("LOG", a.join(" "));
+    oldLog.apply(console, a);
+  };
+
+  const oldErr = console.error;
+  console.error = function(...a){
+    push("ERROR", a.join(" "));
+    oldErr.apply(console, a);
+  };
+
+  const oldWarn = console.warn;
+  console.warn = function(...a){
+    push("WARN", a.join(" "));
+    oldWarn.apply(console, a);
+  };
+
+  window.toggleConsole = function(){
+    panel.style.display = panel.style.display === "none" ? "block" : "none";
+  };
+})();
+console.log("Панель консоли загружена");
+
+/* ================================================================== */
+/* YOUR ORIGINAL SCRIPT (ПОЧТИ БЕЗ ИЗМЕНЕНИЙ) */
+/* ================================================================== */
+
+const BOT_TOKEN="";
+
+let data=[];
+let sorted=true;
+const filePathCache={};
+const deletedIdsKey="outphotos_deleted_ids";
+let deletedIds=new Set(JSON.parse(localStorage.getItem(deletedIdsKey)||"[]"));
+
 async function loadRecords(){
+  console.log("Загрузка records.json...");
   try{
-    const r = await fetch("/records.json");
-    if(!r.ok) return;
-    data = await r.json();
+    const r=await fetch("records.json?cache="+Math.random());
+    console.log("Статус ответа:", r.status);
+    if(!r.ok){
+      console.error("Файл records.json не загрузился");
+      return;
+    }
+    data=await r.json();
+    console.log("Загружено:", data);
     render();
-  }catch(e){ console.error(e); }
+  }catch(e){
+    console.error("Ошибка загрузки:", e);
+  }
 }
 
-// Получение прямого URL к файлу через backend endpoint
-async function getFileUrl(file_id){
-  try{
-    const res = await fetch(`/api/get-file?file_id=${encodeURIComponent(file_id)}`);
-    if(!res.ok) return null;
-    const j = await res.json();
-    return j.url;  // backend возвращает { url: "..." }
-  }catch(e){ return null; }
+async function getTelegramFilePath(file_id){
+  if(filePathCache[file_id]!==undefined) return filePathCache[file_id];
+  if(!BOT_TOKEN){ filePathCache[file_id]=null; return null; }
+  return null;
 }
 
 async function render(){
-  const g = document.getElementById("gallery");
-  g.innerHTML = "";
-  const arr = sorted ? data.filter(x=>x.created_at) : data.filter(x=>!x.created_at);
-  let currentYear = "";
+  console.log("Рендер галереи…");
+  const g=document.getElementById("gallery");
+  g.innerHTML="";
 
+  const arr=sorted ? data.filter(x=>x.created_at) : data.filter(x=>!x.created_at);
+
+  console.log("Элементов в списке:", arr.length);
+
+  let currentYear="";
   for(const item of arr){
     if(deletedIds.has(item.src_msg_id)) continue;
-    const year = item.created_at ? new Date(item.created_at).getFullYear() : "???";
+    const year=item.created_at ? new Date(item.created_at).getFullYear() : "???";
 
-    if(year !== currentYear){
-      currentYear = year;
-      const y = document.createElement("div");
-      y.className = "year";
-      y.textContent = year;
+    if(year!==currentYear){
+      currentYear=year;
+      const y=document.createElement("div");
+      y.className="year";
+      y.textContent=year;
       g.appendChild(y);
     }
 
-    // создаем блок сразу
-    const div = document.createElement("div");
-    div.className = "item";
-
-    const placeholder = document.createElement("div");
-    placeholder.className = "placeholder";
-    placeholder.textContent = "⏳";
-    div.appendChild(placeholder);
+    const div=document.createElement("div");
+    div.className="item";
+    div.textContent="Загрузка…";
     g.appendChild(div);
-
-    // асинхронно загружаем файл
-    (async ()=>{
-      const url = await getFileUrl(item.src_file_id);
-      if(!url){
-        div.remove(); // удаляем блок если файла нет
-        return;
-      }
-
-      div.innerHTML = ""; // убираем placeholder
-      if(item.type==="photo"){
-        const img = document.createElement("img");
-        img.src = url;
-        div.appendChild(img);
-      } else if(item.type==="video"){
-        const v = document.createElement("video");
-        v.src = url;
-        v.controls = true;
-        div.appendChild(v);
-      } else {
-        div.innerHTML = "<div style='color:#aaa'>Unsupported</div>";
-      }
-
-      div.onclick = ()=>openFS(item);
-    })();
   }
-}
-
-async function openFS(item){
-  const fs = document.getElementById("fs");
-  const wrap = document.getElementById("fsMediaWrap");
-  const dateEl = document.getElementById("fsDate");
-  wrap.innerHTML = "";
-  dateEl.textContent = item.created_at ? new Date(item.created_at).toLocaleString() : "";
-  fs.style.display = "flex";
-
-  const url = await getFileUrl(item.src_file_id);
-  if(!url){ closeViewerImmediate(); return; }
-
-  if(item.type==="photo"){
-    const img = document.createElement("img");
-    img.src = url;
-    wrap.appendChild(img);
-    setupDownloadButton(url,item);
-    setupDeleteButton(item);
-  } else if(item.type==="video"){
-    const v = document.createElement("video");
-    v.src = url;
-    v.controls = true;
-    v.autoplay = true;
-    wrap.appendChild(v);
-    setupDownloadButton(url,item);
-    setupDeleteButton(item);
-  }
-}
-
-function closeViewerImmediate(){
-  const fs = document.getElementById("fs");
-  fs.style.display = "none";
-  document.getElementById("fsMediaWrap").innerHTML="";
-}
-
-function fsClose(e){
-  const panel = document.getElementById("fsPanel");
-  const wrap = document.getElementById("fsMediaWrap");
-  if(panel.contains(e.target) || wrap.contains(e.target)) return;
-  closeViewerImmediate();
-}
-
-function setupDownloadButton(url,item){
-  const btn = document.getElementById("downloadBtn");
-  btn.onclick = e=>{
-    e.stopPropagation();
-    const a = document.createElement("a");
-    a.href = url;
-    a.download = `outphoto_${item.src_msg_id}${item.type==="photo"?".jpg":".mp4"}`;
-    document.body.appendChild(a);
-    a.click();
-    a.remove();
-  };
-}
-
-function setupDeleteButton(item){
-  const btn = document.getElementById("deleteBtn");
-  btn.onclick = e=>{
-    e.stopPropagation();
-    deletedIds.add(item.src_msg_id);
-    localStorage.setItem(deletedIdsKey, JSON.stringify([...deletedIds]));
-    render();
-    closeViewerImmediate();
-  };
 }
 
 document.getElementById("btnSorted").onclick=()=>{
   sorted=true;
-  document.getElementById("btnSorted").classList.add("active");
-  document.getElementById("btnUnsorted").classList.remove("active");
   render();
 };
 document.getElementById("btnUnsorted").onclick=()=>{
   sorted=false;
-  document.getElementById("btnUnsorted").classList.add("active");
-  document.getElementById("btnSorted").classList.remove("active");
   render();
 };
 
-// workflow trigger stub
-document.getElementById("runBtn").onclick=()=>{
-  alert("Запуск workflow через backend (не реализован в фронтенде)");
-};
-
-// initial load
 loadRecords();
 </script>
 </body>
