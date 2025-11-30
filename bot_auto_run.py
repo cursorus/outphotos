@@ -1,6 +1,6 @@
 #!/usr/bin/env python3
 # bot_auto_run.py
-import os, json, tempfile, subprocess, time
+import os, json, tempfile, subprocess
 from datetime import datetime
 import requests
 
@@ -62,9 +62,9 @@ def parse_exif_date(path):
                 s = str(dt)
                 try:
                     return datetime.strptime(s, "%Y:%m:%d %H:%M:%S")
-                except Exception:
+                except:
                     pass
-    except Exception:
+    except:
         pass
     return None
 
@@ -81,59 +81,35 @@ def ffprobe_creation_time(path):
             for fmt in ("%Y-%m-%dT%H:%M:%S.%fZ","%Y-%m-%dT%H:%M:%SZ","%Y-%m-%d %H:%M:%S"):
                 try:
                     return datetime.strptime(out, fmt)
-                except Exception:
+                except:
                     continue
-    except Exception:
+    except:
         pass
     return None
 
 def process_update(u, records):
-    """
-    u: update object from getUpdates
-    records: list of existing records (will be modified in-place)
-    """
-
-    # === 1) Собираем все возможные варианты сообщений ===
-    message = (
-        u.get("message")
-        or u.get("edited_message")
-        or u.get("channel_post")
-        or u.get("edited_channel_post")
-    )
-
+    message = u.get("message") or u.get("edited_message") or u.get("channel_post") or u.get("edited_channel_post")
     if not message:
-        print("No message in update")
         return
-
-    # === 2) Проверяем что это нужный канал ===
     chat = message.get("chat") or {}
     if chat.get("id") != SRC_CHAT_ID:
-        print("Wrong chat:", chat.get("id"))
         return
 
     mid = message.get("message_id")
-
-    # === 3) Проверяем что уже не записано ===
     if any(r.get("src_msg_id") == mid for r in records):
-        print("Already processed:", mid)
         return
 
-    # === 4) Определяем тип и file_id ===
     file_id = None
     ftype = None
-
     if message.get("photo"):
         file_id = message["photo"][-1]["file_id"]
         ftype = "photo"
-
     elif message.get("video"):
         file_id = message["video"]["file_id"]
         ftype = "video"
-
     elif message.get("document"):
-        mim = message["document"].get("mime_type", "")
+        mim = message["document"].get("mime_type","")
         file_id = message["document"]["file_id"]
-
         if mim.startswith("image"):
             ftype = "photo"
         elif mim.startswith("video"):
@@ -141,86 +117,68 @@ def process_update(u, records):
         else:
             ftype = "file"
     else:
-        print("Unsupported message type")
         return
 
-    # === 5) Проверяем file_id ===
     if not isinstance(file_id, str) or len(file_id) < 20:
-        print("Invalid file_id:", file_id)
         return
 
-    # === 6) Получаем file_path из Telegram ===
     try:
         info = get_file_info(file_id)
-    except Exception as e:
-        print("get_file_info failed:", e, "ID:", file_id)
+    except:
         return
 
     file_path = info.get("file_path")
     if not file_path:
-        print("file_path missing for:", file_id)
         return
 
-    # === 7) Скачиваем файл ===
     try:
         tmp = download_file_path(file_path)
-    except Exception as e:
-        print("Download failed:", e, file_path)
+    except:
         return
 
-    # === 8) Определяем дату ===
-    dt = None
-    try:
-        if ftype == "photo":
-            dt = parse_exif_date(tmp)
-
-        if not dt:
-            dt = ffprobe_creation_time(tmp)
-
-        if not dt:
+    dt = parse_exif_date(tmp) if ftype=="photo" else None
+    if not dt:
+        dt = ffprobe_creation_time(tmp)
+    if not dt:
+        try:
             dt = datetime.utcfromtimestamp(os.path.getmtime(tmp))
-    except:
-        dt = datetime.utcnow()
+        except:
+            dt = datetime.utcnow()
 
-    # === 9) Удаляем временный файл ===
     try:
         os.unlink(tmp)
     except:
         pass
 
-    # === 10) Создаём запись ===
     rec = {
         "src_msg_id": mid,
         "src_file_id": file_id,
         "type": ftype,
         "created_at": safe_iso(dt)
     }
-
-    # новые сверху
     records.insert(0, rec)
-
     print("Added:", rec)
 
 def clean_records(records):
-    """Удаляем устаревшие файлы, которых больше нет в Telegram."""
+    """Удаляем устаревшие файлы из records, которых больше нет в Telegram"""
     new_records = []
     for r in records:
         try:
             resp = requests.get(f"{API}/getFile", params={"file_id": r["src_file_id"]}, timeout=10).json()
-            if resp.get("ok"):
+            if resp.get("ok") and resp.get("result") and resp["result"].get("file_path"):
                 new_records.append(r)
-        except Exception:
+        except:
             continue
     return new_records
 
 def main():
     if not BOT_TOKEN or not SRC_CHAT_ID:
-        raise SystemExit("BOT_TOKEN or SRC_CHAT_ID not set in environment")
+        raise SystemExit("BOT_TOKEN or SRC_CHAT_ID not set")
 
     state = load_json(STATE_FILE, {"update_offset": None})
     records = load_json(RECORDS_FILE, [])
 
-    # Очищаем старые записи, которых нет в Telegram
+    # Удаляем устаревшие файлы
     records = clean_records(records)
 
     updates = get_updates(state.get("update_offset"))
@@ -236,4 +194,7 @@ def main():
     state["update_offset"] = max_update
     save_json(STATE_FILE, state)
     save_json(RECORDS_FILE, records)
-    print("Done. records:", len(records))
+    print(f"Done. Total records: {len(records)}")
+
+if __name__ == "__main__":
+    main()
