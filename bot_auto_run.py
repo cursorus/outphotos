@@ -92,29 +92,48 @@ def process_update(u, records):
     u: update object from getUpdates
     records: list of existing records (will be modified in-place)
     """
-    # теперь учитываем channel_post
-    message = u.get("message") or u.get("edited_message") or u.get("channel_post")
+
+    # === 1) Собираем все возможные варианты сообщений ===
+    message = (
+        u.get("message")
+        or u.get("edited_message")
+        or u.get("channel_post")
+        or u.get("edited_channel_post")
+    )
+
     if not message:
-        return
-    chat = message.get("chat") or {}
-    if chat.get("id") != SRC_CHAT_ID:
-        return
-    mid = message.get("message_id")
-    # skip if already present
-    if any(r.get("src_msg_id") == mid for r in records):
+        print("No message in update")
         return
 
+    # === 2) Проверяем что это нужный канал ===
+    chat = message.get("chat") or {}
+    if chat.get("id") != SRC_CHAT_ID:
+        print("Wrong chat:", chat.get("id"))
+        return
+
+    mid = message.get("message_id")
+
+    # === 3) Проверяем что уже не записано ===
+    if any(r.get("src_msg_id") == mid for r in records):
+        print("Already processed:", mid)
+        return
+
+    # === 4) Определяем тип и file_id ===
     file_id = None
     ftype = None
+
     if message.get("photo"):
         file_id = message["photo"][-1]["file_id"]
         ftype = "photo"
+
     elif message.get("video"):
         file_id = message["video"]["file_id"]
         ftype = "video"
+
     elif message.get("document"):
+        mim = message["document"].get("mime_type", "")
         file_id = message["document"]["file_id"]
-        mim = message["document"].get("mime_type","")
+
         if mim.startswith("image"):
             ftype = "photo"
         elif mim.startswith("video"):
@@ -122,41 +141,64 @@ def process_update(u, records):
         else:
             ftype = "file"
     else:
+        print("Unsupported message type")
         return
 
-    # get file path and download
-    info = get_file_info(file_id)
+    # === 5) Проверяем file_id ===
+    if not isinstance(file_id, str) or len(file_id) < 20:
+        print("Invalid file_id:", file_id)
+        return
+
+    # === 6) Получаем file_path из Telegram ===
+    try:
+        info = get_file_info(file_id)
+    except Exception as e:
+        print("get_file_info failed:", e, "ID:", file_id)
+        return
+
     file_path = info.get("file_path")
     if not file_path:
+        print("file_path missing for:", file_id)
         return
-    tmp = download_file_path(file_path)
 
-    # try to read date
+    # === 7) Скачиваем файл ===
+    try:
+        tmp = download_file_path(file_path)
+    except Exception as e:
+        print("Download failed:", e, file_path)
+        return
+
+    # === 8) Определяем дату ===
     dt = None
-    if ftype == "photo":
-        dt = parse_exif_date(tmp)
-    if not dt:
-        dt = ffprobe_creation_time(tmp)
-    if not dt:
-        try:
-            dt = datetime.utcfromtimestamp(os.path.getmtime(tmp))
-        except Exception:
-            dt = datetime.utcnow()
+    try:
+        if ftype == "photo":
+            dt = parse_exif_date(tmp)
 
-    # cleanup
+        if not dt:
+            dt = ffprobe_creation_time(tmp)
+
+        if not dt:
+            dt = datetime.utcfromtimestamp(os.path.getmtime(tmp))
+    except:
+        dt = datetime.utcnow()
+
+    # === 9) Удаляем временный файл ===
     try:
         os.unlink(tmp)
-    except Exception:
+    except:
         pass
 
+    # === 10) Создаём запись ===
     rec = {
         "src_msg_id": mid,
         "src_file_id": file_id,
         "type": ftype,
         "created_at": safe_iso(dt)
     }
-    # newest first
+
+    # новые сверху
     records.insert(0, rec)
+
     print("Added:", rec)
 
 def main():
