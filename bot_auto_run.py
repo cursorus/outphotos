@@ -101,21 +101,42 @@ def process_update(u, records):
 
     file_id = None
     ftype = None
+
+    # simple extension lists for fallback detection
+    image_exts = (".jpg", ".jpeg", ".png", ".gif", ".heic", ".webp", ".tiff", ".bmp")
+    video_exts = (".mp4", ".mov", ".mkv", ".webm", ".avi", ".flv", ".3gp", ".mpeg", ".mpg")
+
+    # Prefer explicit fields
     if message.get("photo"):
         file_id = message["photo"][-1]["file_id"]
         ftype = "photo"
     elif message.get("video"):
         file_id = message["video"]["file_id"]
         ftype = "video"
+    elif message.get("animation"):
+        # animations (GIFs) come here; treat them as video-type for gallery purposes
+        file_id = message["animation"]["file_id"]
+        ftype = "video"
     elif message.get("document"):
-        mim = message["document"].get("mime_type","")
-        file_id = message["document"]["file_id"]
+        doc = message["document"]
+        mim = (doc.get("mime_type") or "").lower()
+        name = (doc.get("file_name") or "").lower()
+        file_id = doc.get("file_id")
+
+        # Detect by mime type first, then fallback to filename extension
         if mim.startswith("image"):
             ftype = "photo"
         elif mim.startswith("video"):
             ftype = "video"
         else:
-            ftype = "file"
+            # fallback based on filename extension (some clients omit mime_type)
+            if any(name.endswith(ext) for ext in image_exts):
+                ftype = "photo"
+            elif any(name.endswith(ext) for ext in video_exts):
+                ftype = "video"
+            else:
+                # unknown document type — keep as generic file (not shown in gallery)
+                ftype = "file"
     else:
         return
 
@@ -136,7 +157,7 @@ def process_update(u, records):
     except:
         return
 
-    dt = parse_exif_date(tmp) if ftype=="photo" else None
+    dt = parse_exif_date(tmp) if ftype == "photo" else None
     if not dt:
         dt = ffprobe_creation_time(tmp)
     if not dt:
