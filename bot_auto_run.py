@@ -81,7 +81,7 @@ def ffprobe_creation_time(path):
             for fmt in ("%Y-%m-%dT%H:%M:%S.%fZ","%Y-%m-%dT%H:%M:%SZ","%Y-%m-%d %H:%M:%S"):
                 try:
                     return datetime.strptime(out, fmt)
-                except:
+                except Exception:
                     continue
     except:
         pass
@@ -114,7 +114,7 @@ def process_update(u, records):
         file_id = message["video"]["file_id"]
         ftype = "video"
     elif message.get("animation"):
-        # animations (GIFs) come here; treat them as video-type for gallery purposes
+        # GIFs or animations
         file_id = message["animation"]["file_id"]
         ftype = "video"
     elif message.get("document"):
@@ -122,21 +122,12 @@ def process_update(u, records):
         mim = (doc.get("mime_type") or "").lower()
         name = (doc.get("file_name") or "").lower()
         file_id = doc.get("file_id")
-
-        # Detect by mime type first, then fallback to filename extension
-        if mim.startswith("image"):
+        if mim.startswith("image") or any(name.endswith(ext) for ext in image_exts):
             ftype = "photo"
-        elif mim.startswith("video"):
+        elif mim.startswith("video") or any(name.endswith(ext) for ext in video_exts):
             ftype = "video"
         else:
-            # fallback based on filename extension (some clients omit mime_type)
-            if any(name.endswith(ext) for ext in image_exts):
-                ftype = "photo"
-            elif any(name.endswith(ext) for ext in video_exts):
-                ftype = "video"
-            else:
-                # unknown document type — keep as generic file (not shown in gallery)
-                ftype = "file"
+            ftype = "file"
     else:
         return
 
