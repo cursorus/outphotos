@@ -201,6 +201,18 @@ def process_update(u, records):
 
     print("Added:", rec)
 
+def clean_records(records):
+    """Удаляем устаревшие файлы, которых больше нет в Telegram."""
+    new_records = []
+    for r in records:
+        try:
+            resp = requests.get(f"{API}/getFile", params={"file_id": r["src_file_id"]}, timeout=10).json()
+            if resp.get("ok"):
+                new_records.append(r)
+        except Exception:
+            continue
+    return new_records
+
 def main():
     if not BOT_TOKEN or not SRC_CHAT_ID:
         raise SystemExit("BOT_TOKEN or SRC_CHAT_ID not set in environment")
@@ -208,23 +220,20 @@ def main():
     state = load_json(STATE_FILE, {"update_offset": None})
     records = load_json(RECORDS_FILE, [])
 
+    # Очищаем старые записи, которых нет в Telegram
+    records = clean_records(records)
+
     updates = get_updates(state.get("update_offset"))
     max_update = state.get("update_offset")
     for u in updates:
         uid = u.get("update_id")
         if uid is None:
             continue
-        # process update
         process_update(u, records)
-        # set offset to last processed + 1
         if max_update is None or uid >= max_update:
             max_update = uid + 1
 
-    # save state and records
     state["update_offset"] = max_update
     save_json(STATE_FILE, state)
     save_json(RECORDS_FILE, records)
     print("Done. records:", len(records))
-
-if __name__ == "__main__":
-    main()
