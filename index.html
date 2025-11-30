@@ -5,155 +5,238 @@
 <meta name="viewport" content="width=device-width,initial-scale=1" />
 <title>Gallery</title>
 <style>
-body {
-  margin:0;
-  background:#1c1c1c;
-  color:white;
-  font-family:sans-serif;
+:root{
+  --bg:#1c1c1c;
+  --panel:#0f1720;
+  --accent:#60a5fa;
+  --muted:#9aa4b2;
 }
-header {
+body{
+  margin:0;
+  background:var(--bg);
+  color:#fff;
+  font-family:system-ui,-apple-system,BlinkMacSystemFont,"Segoe UI",Roboto,"Helvetica Neue",Arial;
+  -webkit-font-smoothing:antialiased;
+  -moz-osx-font-smoothing:grayscale;
+  -webkit-tap-highlight-color:transparent;
+}
+header{
   display:flex;
   justify-content:flex-start;
-  gap:25px;
+  gap:18px;
   padding:10px;
-  font-size:18px;
+  font-size:17px;
 }
-header div { cursor:pointer; }
+header div{ cursor:pointer; user-select:none; padding:6px 8px; border-radius:8px; }
+header div.active{ background:#111; }
 
-#gallery {
+#gallery{
   display:grid;
   grid-template-columns:repeat(3,1fr);
-  gap:2px;
-  padding:2px;
+  gap:4px;
+  padding:6px;
 }
 
-.year {
+.year{
   grid-column:1/-1;
   text-align:left;
-  padding:5px;
-  font-size:20px;
-  font-weight:bold;
+  padding:6px 4px;
+  font-size:18px;
+  font-weight:700;
+  color:#fff;
 }
 
-.item {
-  border:0px solid #13131313;
+.item{
+  border:2px solid rgba(255,255,255,0.06);
   height:120px;
   overflow:hidden;
-  border-radius:0px;
+  border-radius:8px;
   cursor:pointer;
   background:#131313;
   display:flex;
   align-items:center;
   justify-content:center;
+  position:relative;
 }
-.item img, .item video {
+.item .placeholder{
+  width:40%;
+  height:40%;
+  opacity:0.12;
+}
+
+.item img, .item video{
   width:100%;
   height:100%;
   object-fit:cover;
+  display:block;
 }
 
-/* Fullscreen */
-#fs {
+/* Fullscreen viewer */
+#fs{
   display:none;
   position:fixed;
   inset:0;
-  background:rgba(0,0,0,0.95);
-  z-index:2000;
+  background:rgba(0,0,0,0.96);
+  z-index:1200;
   justify-content:center;
-  align-items:center;
+  align-items:flex-start;
   flex-direction:column;
+  padding-top:28px;
+  box-sizing:border-box;
 }
-#fs img, #fs video {
-  width:90%;
-  height:auto;
-  max-height:80%;
-}
-#fs .date {
-  margin-top:12px;
-  font-size:18px;
-}
-
-/* Bottom panel */
-#fsPanel {
-  position:fixed;
-  bottom:-60px;
-  left:0;
+#fs .media-wrap{
   width:100%;
   display:flex;
   justify-content:center;
-  gap:20px;
-  padding:10px;
-  background:rgba(30,30,30,0.95);
-  transition: bottom 0.3s ease;
-}
-#fsPanel.show {
-  bottom:0;
-}
-#fsPanel button {
-  border:none;
-  background:#60a5fa;
-  color:white;
-  font-size:16px;
-  padding:8px 12px;
-  border-radius:8px;
-  cursor:pointer;
-  display:flex;
   align-items:center;
-  gap:6px;
 }
+#fs img, #fs video{
+  width: calc(100vw - 24px);
+  height: auto;
+  max-height: calc(100vh - 160px);
+  border-radius:8px;
+  box-shadow: 0 10px 30px rgba(0,0,0,0.6);
+}
+
+/* bottom panel with actions */
+#fsPanel{
+  position:fixed;
+  left:0;
+  right:0;
+  bottom:0;
+  display:flex;
+  justify-content:center;
+  padding:18px;
+  box-sizing:border-box;
+  transform: translateY(110%);
+  transition: transform 320ms cubic-bezier(.2,.9,.3,1);
+  z-index:1250;
+}
+#fs.showPanel #fsPanel{ transform: translateY(0); }
+
+.panelBtn{
+  display:inline-flex;
+  align-items:center;
+  gap:10px;
+  padding:10px 14px;
+  background: linear-gradient(180deg, rgba(255,255,255,0.03), rgba(255,255,255,0.01));
+  color:#fff;
+  border:none;
+  border-radius:12px;
+  font-weight:600;
+  cursor:pointer;
+  margin:0 8px;
+  min-width:140px;
+  justify-content:center;
+}
+.panelBtn svg{ width:18px; height:18px; flex:0 0 18px; }
+
+/* Run workflow button at bottom of page (separate) */
+#runWrap{ display:flex; justify-content:center; padding:12px; }
+#runBtn{
+  display:inline-flex;
+  align-items:center;
+  gap:10px;
+  padding:10px 16px;
+  border-radius:12px;
+  border:none;
+  background:var(--accent);
+  color:#07243b;
+  font-weight:700;
+  cursor:pointer;
+}
+#runIcon{ width:18px; height:18px; display:inline-block; }
+
+/* spinner */
+@keyframes spin { to { transform: rotate(360deg); } }
+.icon-spinner{ animation: spin 1s linear infinite; }
+
+/* small helpers */
+.hidden{ display:none !important; }
+.center{ display:flex; align-items:center; justify-content:center; }
 </style>
 </head>
 <body>
 
 <header>
-  <div id="btnSorted">Сортированное</div>
+  <div id="btnSorted" class="active">Сортированное</div>
   <div id="btnUnsorted">Несортированное</div>
 </header>
 
 <div id="gallery"></div>
 
-<div id="fs">
-  <div id="fsContent"></div>
-  <div class="date" id="fsDate"></div>
+<!-- fullscreen viewer -->
+<div id="fs" onclick="fsClose(event)">
+  <div class="media-wrap" id="fsMediaWrap"></div>
+  <div id="fsDate" style="color:#ddd; text-align:center; margin-top:12px;"></div>
+
+  <!-- panel (appears from bottom) -->
   <div id="fsPanel">
-    <button id="downloadBtn">💾 Скачать</button>
-    <button id="deleteBtn">🗑 Удалить</button>
+    <button class="panelBtn" id="downloadBtn" title="Скачать">
+      <svg viewBox="0 0 24 24" fill="none" stroke="currentColor"><path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4" stroke-width="1.6" stroke-linecap="round" stroke-linejoin="round"/><polyline points="7 10 12 15 17 10" stroke-width="1.6" stroke-linecap="round" stroke-linejoin="round"/><line x1="12" y1="15" x2="12" y2="3" stroke-width="1.6" stroke-linecap="round" stroke-linejoin="round"/></svg>
+      Скачать
+    </button>
+
+    <button class="panelBtn" id="deleteBtn" title="Удалить из галереи">
+      <svg viewBox="0 0 24 24" fill="none" stroke="currentColor"><polyline points="3 6 5 6 21 6" stroke-width="1.6" stroke-linecap="round" stroke-linejoin="round"/><path d="M19 6l-1 14a2 2 0 0 1-2 2H8a2 2 0 0 1-2-2L5 6" stroke-width="1.6" stroke-linecap="round" stroke-linejoin="round"/><path d="M10 11v6" stroke-width="1.6" stroke-linecap="round" stroke-linejoin="round"/><path d="M14 11v6" stroke-width="1.6" stroke-linecap="round" stroke-linejoin="round"/></svg>
+      Удалить
+    </button>
   </div>
 </div>
 
-<div id="workflowBtn">
-  <button>
-    <span id="btnIcon">▶️</span>
-    <span>Запустить workflow</span>
+<!-- run workflow -->
+<div id="runWrap">
+  <button id="runBtn" title="Запустить workflow">
+    <span id="runIcon"><svg id="runSvg" viewBox="0 0 24 24" fill="none" stroke="currentColor"><polygon points="5 3 19 12 5 21 5 3" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round"/></svg></span>
+    <span id="runText">Запустить workflow</span>
   </button>
 </div>
 
 <script>
-let BOT_TOKEN = null; // будем получать с сервера
+const BOT_TOKEN = ""; // optional
+
 let data = [];
 let sorted = true;
-let currentItem = null;
+const filePathCache = {};
+const deletedIdsKey = "outphotos_deleted_ids";
+let deletedIds = new Set(JSON.parse(localStorage.getItem(deletedIdsKey) || "[]"));
 
-// Загружаем секреты с сервера
-fetch("/secrets")
-  .then(r=>r.json())
-  .then(j=>{ BOT_TOKEN=j.BOT_TOKEN; loadRecords(); });
-
-// Загружаем JSON
-function loadRecords() {
-  fetch("records.json")
-    .then(r=>r.json())
-    .then(j=>{ data=j; render(); });
+async function loadRecords(){
+  try{
+    const r = await fetch("records.json");
+    if(!r.ok) return;
+    data = await r.json();
+    render();
+  }catch(e){ console.error(e); }
 }
 
-function render() {
+async function getTelegramFilePath(file_id){
+  if(filePathCache[file_id] !== undefined) return filePathCache[file_id];
+  if(!BOT_TOKEN) { filePathCache[file_id] = null; return null; }
+  try{
+    const res = await fetch(`https://api.telegram.org/bot${BOT_TOKEN}/getFile?file_id=${encodeURIComponent(file_id)}`);
+    const j = await res.json();
+    if(j.ok && j.result && j.result.file_path){
+      filePathCache[file_id] = j.result.file_path;
+      return j.result.file_path;
+    } else {
+      filePathCache[file_id] = null;
+      return null;
+    }
+  }catch(e){
+    filePathCache[file_id] = null;
+    return null;
+  }
+}
+
+async function render(){
   const g = document.getElementById("gallery");
   g.innerHTML = "";
-  let arr = sorted ? data.filter(x=>x.created_at) : data.filter(x=>!x.created_at);
+  const arr = sorted ? data.filter(x=>x.created_at) : data.filter(x=>!x.created_at);
   let currentYear = "";
-
-  arr.forEach((item,index)=>{
-    let year = item.created_at ? new Date(item.created_at).getFullYear() : "???";
+  for(const item of arr){
+    if(deletedIds.has(item.src_msg_id)) continue;
+    const year = item.created_at ? new Date(item.created_at).getFullYear() : "???";
     if(year !== currentYear){
       currentYear = year;
       const y = document.createElement("div");
@@ -164,114 +247,151 @@ function render() {
 
     const div = document.createElement("div");
     div.className = "item";
+    const placeholder = document.createElement("div");
+    placeholder.className = "placeholder";
+    placeholder.innerHTML = `<svg viewBox="0 0 24 24" width="56" height="56" fill="none" stroke="currentColor"><rect x="3" y="3" width="18" height="18" rx="2" ry="2" stroke-width="1.4"/><path d="M8 14l2.5-3 2 2.5L16 10l3 4H8z" stroke-width="1.4" stroke-linejoin="round"/></svg>`;
+    div.appendChild(placeholder);
 
-    const fileUrl = `/fileProxy?file_id=${item.src_file_id}`; // прокси на сервере
-    fetch(fileUrl)
-      .then(r=>r.json())
-      .then(j=>{
-        if(!j.ok || !j.result || !j.result.file_path) return;
-        const url = `/fileProxy?path=${encodeURIComponent(j.result.file_path)}`;
-
-        if(item.type==="photo"){
-          const img = document.createElement("img");
-          img.src = url;
-          div.appendChild(img);
-        } else if(item.type==="video"){
-          const img = document.createElement("img");
-          img.src = url+".jpg";
-          div.appendChild(img);
-        }
-      });
-
-    div.onclick = ()=>openFS(item,index);
-    g.appendChild(div);
-  });
-}
-
-// Fullscreen
-function openFS(item,index){
-  currentItem = index;
-  const fs = document.getElementById("fs");
-  const c = document.getElementById("fsContent");
-  const d = document.getElementById("fsDate");
-  const panel = document.getElementById("fsPanel");
-  c.innerHTML="";
-  d.textContent = item.created_at ? new Date(item.created_at).toLocaleString() : "";
-  
-  const fileUrl = `/fileProxy?file_id=${item.src_file_id}`;
-  fetch(fileUrl)
-    .then(r=>r.json())
-    .then(j=>{
-      if(!j.ok || !j.result || !j.result.file_path) return;
-      const url = `/fileProxy?path=${encodeURIComponent(j.result.file_path)}`;
-      c.innerHTML="";
-      if(item.type==="photo"){
-        const img=document.createElement("img");
-        img.src=url;
-        c.appendChild(img);
-      } else if(item.type==="video"){
-        const v=document.createElement("video");
-        v.controls=true;
-        v.autoplay=true;
-        v.src=url;
-        c.appendChild(v);
+    (async ()=>{
+      const fp = await getTelegramFilePath(item.src_file_id);
+      if(!fp){ div.remove(); return; }
+      const url = `https://api.telegram.org/file/bot${BOT_TOKEN}/${fp}`;
+      div.innerHTML = "";
+      if(item.type === "photo"){
+        const img = document.createElement("img");
+        img.src = url;
+        div.appendChild(img);
+      } else if(item.type === "video"){
+        const img = document.createElement("img");
+        img.src = url + ".jpg";
+        img.onerror = ()=>{ img.src = url; };
+        div.appendChild(img);
+      } else {
+        div.innerHTML = "<div style='padding:8px;color:var(--muted)'>Unsupported</div>";
       }
-      panel.classList.add("show");
-    });
+    })();
 
-  fs.style.display="flex";
+    div.onclick = ()=>openFS(item);
+    g.appendChild(div);
+  }
 }
 
-// Закрытие fullscreen
-document.getElementById("fs").onclick = e=>{
-  if(e.target.id==="fs"){
-    document.getElementById("fs").style.display="none";
-    document.getElementById("fsPanel").classList.remove("show");
-  }
-};
+async function openFS(item){
+  const fs = document.getElementById("fs");
+  const wrap = document.getElementById("fsMediaWrap");
+  const dateEl = document.getElementById("fsDate");
+  wrap.innerHTML = "";
+  dateEl.textContent = item.created_at ? new Date(item.created_at).toLocaleString() : "";
+  fs.style.display = "flex";
+  requestAnimationFrame(()=> fs.classList.add("showPanel"));
 
-// Кнопки панели
-document.getElementById("downloadBtn").onclick = ()=>{
-  if(currentItem===null) return;
-  const item = data[currentItem];
-  const a=document.createElement("a");
-  a.href=`/fileProxy?file_id=${item.src_file_id}`;
-  a.download="file";
-  document.body.appendChild(a);
-  a.click();
-  a.remove();
-};
+  const fp = await getTelegramFilePath(item.src_file_id);
+  if(!fp){ setTimeout(closeViewerImmediate,300); return; }
+  const url = `https://api.telegram.org/file/bot${BOT_TOKEN}/${fp}`;
 
-document.getElementById("deleteBtn").onclick = ()=>{
-  if(currentItem===null) return;
-  data.splice(currentItem,1);
-  localStorage.setItem("galleryDeleted", JSON.stringify(data.map(d=>d.src_file_id)));
+  if(item.type==="photo"){
+    const img=document.createElement("img");
+    img.src=url;
+    wrap.appendChild(img);
+    setupDownloadButton(url,item);
+    setupDeleteButton(item);
+  } else if(item.type==="video"){
+    const v=document.createElement("video");
+    v.src=url; v.controls=true; v.autoplay=true;
+    v.style.maxHeight="calc(100vh - 160px)";
+    wrap.appendChild(v);
+    setupDownloadButton(url,item);
+    setupDeleteButton(item);
+  } else wrap.innerHTML="<div style='color:var(--muted)'>Неподдерживаемый тип</div>";
+}
+
+function closeViewerImmediate(){
+  const fs = document.getElementById("fs");
+  fs.classList.remove("showPanel");
+  fs.style.display = "none";
+  document.getElementById("fsMediaWrap").innerHTML="";
+}
+
+function fsClose(e){
+  const panel=document.getElementById("fsPanel");
+  const mediaWrap=document.getElementById("fsMediaWrap");
+  if(panel.contains(e.target) || mediaWrap.contains(e.target)) return;
+  closeViewerImmediate();
+}
+
+function setupDownloadButton(fileUrl,item){
+  const btn=document.getElementById("downloadBtn");
+  btn.onclick=async e=>{
+    e.stopPropagation();
+    try{
+      const res=await fetch(fileUrl);
+      const blob=await res.blob();
+      const ext=item.type==="photo"?".jpg":".mp4";
+      const name=`outphoto_${item.src_msg_id}${ext}`;
+      const urlObj=URL.createObjectURL(blob);
+      const a=document.createElement("a"); a.href=urlObj; a.download=name; document.body.appendChild(a); a.click(); a.remove(); URL.revokeObjectURL(urlObj);
+    }catch(err){ console.error(err); alert("Не удалось скачать файл"); }
+  };
+}
+
+function setupDeleteButton(item){
+  const btn=document.getElementById("deleteBtn");
+  btn.onclick=e=>{
+    e.stopPropagation();
+    deletedIds.add(item.src_msg_id);
+    localStorage.setItem(deletedIdsKey,JSON.stringify([...deletedIds]));
+    render();
+    closeViewerImmediate();
+  };
+}
+
+document.getElementById("btnSorted").onclick=()=>{
+  sorted=true;
+  document.getElementById("btnSorted").classList.add("active");
+  document.getElementById("btnUnsorted").classList.remove("active");
   render();
-  document.getElementById("fs").style.display="none";
-  document.getElementById("fsPanel").classList.remove("show");
+};
+document.getElementById("btnUnsorted").onclick=()=>{
+  sorted=false;
+  document.getElementById("btnUnsorted").classList.add("active");
+  document.getElementById("btnSorted").classList.remove("active");
+  render();
 };
 
-// Сортировка
-document.getElementById("btnSorted").onclick = ()=>{ sorted=true; render(); };
-document.getElementById("btnUnsorted").onclick = ()=>{ sorted=false; render(); };
+// workflow trigger
+const runBtn=document.getElementById("runBtn");
+const runIconWrap=document.getElementById("runIcon");
+const runText=document.getElementById("runText");
 
-// Workflow кнопка
-const btn=document.querySelector("#workflowBtn button");
-const icon=document.getElementById("btnIcon");
+async function runWorkflow(){
+  // dispatcher uses repository_dispatch without exposing token
+  runIconWrap.innerHTML=`<svg class="icon-spinner" viewBox="0 0 50 50"><circle cx="25" cy="25" r="20" stroke="white" stroke-width="4" stroke-linecap="round" fill="none" stroke-dasharray="31.4 31.4"/></svg>`;
+  runBtn.disabled=true;
+  runText.textContent="Запущен...";
 
-btn.onclick = async ()=>{
-  icon.textContent="⏳";
-  btn.disabled=true;
   try{
-    await fetch("/runWorkflow",{method:"POST"});
-    icon.textContent="✅";
-    setTimeout(()=>{ icon.textContent="▶️"; btn.disabled=false; },3000);
-  } catch(e){
-    console.error(e);
-    icon.textContent="❌";
-    setTimeout(()=>{ icon.textContent="▶️"; btn.disabled=false; },3000);
+    const resp = await fetch("/.netlify/functions/dispatch-workflow", { method:"POST" });
+    if(!resp.ok) throw new Error(resp.statusText);
+    runIconWrap.innerHTML=`<svg viewBox="0 0 24 24" fill="none" stroke="currentColor"><path d="M20 6L9 17l-5-5" stroke-width="1.6" stroke-linecap="round" stroke-linejoin="round"/></svg>`;
+    runText.textContent="Готово";
+  }catch(err){
+    console.error(err);
+    runIconWrap.innerHTML=`<svg viewBox="0 0 24 24" fill="none" stroke="currentColor"><path d="M18 6L6 18M6 6l12 12" stroke-width="1.6" stroke-linecap="round" stroke-linejoin="round"/></svg>`;
+    runText.textContent="Ошибка";
+  }finally{
+    setTimeout(()=>{
+      runIconWrap.innerHTML=`<svg id="runSvg" viewBox="0 0 24 24" fill="none" stroke="currentColor"><polygon points="5 3 19 12 5 21 5 3" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round"/></svg>`;
+      runText.textContent="Запустить workflow";
+      runBtn.disabled=false;
+      loadRecords();
+    },3000);
   }
-};
+}
+
+runBtn.onclick=runWorkflow;
+
+// initial
+loadRecords();
 </script>
 </body>
 </html>
