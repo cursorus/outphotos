@@ -64,7 +64,8 @@ header div { cursor:pointer; }
   flex-direction:column;
 }
 #fs img, #fs video {
-  max-width:100%;
+  width:90%;
+  height:auto;
   max-height:80%;
 }
 #fs .date {
@@ -72,24 +73,33 @@ header div { cursor:pointer; }
   font-size:18px;
 }
 
-/* Workflow кнопка */
-#workflowBtn {
+/* Bottom panel */
+#fsPanel {
+  position:fixed;
+  bottom:-60px;
+  left:0;
+  width:100%;
   display:flex;
   justify-content:center;
-  margin:12px;
+  gap:20px;
+  padding:10px;
+  background:rgba(30,30,30,0.95);
+  transition: bottom 0.3s ease;
 }
-#workflowBtn button {
-  display:flex;
-  align-items:center;
-  gap:8px;
-  padding:10px 20px;
-  border-radius:12px;
+#fsPanel.show {
+  bottom:0;
+}
+#fsPanel button {
   border:none;
   background:#60a5fa;
-  color:#fff;
-  font-weight:bold;
-  cursor:pointer;
+  color:white;
   font-size:16px;
+  padding:8px 12px;
+  border-radius:8px;
+  cursor:pointer;
+  display:flex;
+  align-items:center;
+  gap:6px;
 }
 </style>
 </head>
@@ -105,6 +115,10 @@ header div { cursor:pointer; }
 <div id="fs">
   <div id="fsContent"></div>
   <div class="date" id="fsDate"></div>
+  <div id="fsPanel">
+    <button id="downloadBtn">💾 Скачать</button>
+    <button id="deleteBtn">🗑 Удалить</button>
+  </div>
 </div>
 
 <div id="workflowBtn">
@@ -115,14 +129,22 @@ header div { cursor:pointer; }
 </div>
 
 <script>
-const BOT_TOKEN = "8352798938:AAGnDHDe2aIrqxbqsY-9U_3I30L1qxoVAYA";
+let BOT_TOKEN = null; // будем получать с сервера
 let data = [];
 let sorted = true;
+let currentItem = null;
+
+// Загружаем секреты с сервера
+fetch("/secrets")
+  .then(r=>r.json())
+  .then(j=>{ BOT_TOKEN=j.BOT_TOKEN; loadRecords(); });
 
 // Загружаем JSON
-fetch("records.json")
-  .then(r=>r.json())
-  .then(j=>{ data=j; render(); });
+function loadRecords() {
+  fetch("records.json")
+    .then(r=>r.json())
+    .then(j=>{ data=j; render(); });
+}
 
 function render() {
   const g = document.getElementById("gallery");
@@ -130,7 +152,7 @@ function render() {
   let arr = sorted ? data.filter(x=>x.created_at) : data.filter(x=>!x.created_at);
   let currentYear = "";
 
-  arr.forEach(item=>{
+  arr.forEach((item,index)=>{
     let year = item.created_at ? new Date(item.created_at).getFullYear() : "???";
     if(year !== currentYear){
       currentYear = year;
@@ -143,14 +165,12 @@ function render() {
     const div = document.createElement("div");
     div.className = "item";
 
-    const fileUrl = `https://api.telegram.org/bot${BOT_TOKEN}/getFile?file_id=${item.src_file_id}`;
-    
-    // Проверяем, доступно ли медиа
+    const fileUrl = `/fileProxy?file_id=${item.src_file_id}`; // прокси на сервере
     fetch(fileUrl)
       .then(r=>r.json())
       .then(j=>{
-        if(!j.ok || !j.result || !j.result.file_path) return; // удалено — не показываем
-        const url = `https://api.telegram.org/file/bot${BOT_TOKEN}/${j.result.file_path}`;
+        if(!j.ok || !j.result || !j.result.file_path) return;
+        const url = `/fileProxy?path=${encodeURIComponent(j.result.file_path)}`;
 
         if(item.type==="photo"){
           const img = document.createElement("img");
@@ -158,83 +178,98 @@ function render() {
           div.appendChild(img);
         } else if(item.type==="video"){
           const img = document.createElement("img");
-          // используем первый кадр видео как превью (Telegram поддерживает .jpg)
-          img.src = url + ".jpg";
+          img.src = url+".jpg";
           div.appendChild(img);
         }
       });
 
-    div.onclick = ()=>openFS(item);
+    div.onclick = ()=>openFS(item,index);
     g.appendChild(div);
   });
 }
 
 // Fullscreen
-function openFS(item){
+function openFS(item,index){
+  currentItem = index;
   const fs = document.getElementById("fs");
   const c = document.getElementById("fsContent");
   const d = document.getElementById("fsDate");
-  c.innerHTML = "";
+  const panel = document.getElementById("fsPanel");
+  c.innerHTML="";
   d.textContent = item.created_at ? new Date(item.created_at).toLocaleString() : "";
-
-  const fileUrl = `https://api.telegram.org/bot${BOT_TOKEN}/getFile?file_id=${item.src_file_id}`;
+  
+  const fileUrl = `/fileProxy?file_id=${item.src_file_id}`;
   fetch(fileUrl)
     .then(r=>r.json())
     .then(j=>{
       if(!j.ok || !j.result || !j.result.file_path) return;
-      const url = `https://api.telegram.org/file/bot${BOT_TOKEN}/${j.result.file_path}`;
+      const url = `/fileProxy?path=${encodeURIComponent(j.result.file_path)}`;
+      c.innerHTML="";
       if(item.type==="photo"){
-        const img = document.createElement("img");
-        img.src = url;
+        const img=document.createElement("img");
+        img.src=url;
         c.appendChild(img);
       } else if(item.type==="video"){
-        const v = document.createElement("video");
+        const v=document.createElement("video");
         v.controls=true;
         v.autoplay=true;
         v.src=url;
         c.appendChild(v);
       }
+      panel.classList.add("show");
     });
 
   fs.style.display="flex";
 }
 
-document.getElementById("fs").onclick = ()=>(
-  document.getElementById("fs").style.display="none"
-);
+// Закрытие fullscreen
+document.getElementById("fs").onclick = e=>{
+  if(e.target.id==="fs"){
+    document.getElementById("fs").style.display="none";
+    document.getElementById("fsPanel").classList.remove("show");
+  }
+};
 
+// Кнопки панели
+document.getElementById("downloadBtn").onclick = ()=>{
+  if(currentItem===null) return;
+  const item = data[currentItem];
+  const a=document.createElement("a");
+  a.href=`/fileProxy?file_id=${item.src_file_id}`;
+  a.download="file";
+  document.body.appendChild(a);
+  a.click();
+  a.remove();
+};
+
+document.getElementById("deleteBtn").onclick = ()=>{
+  if(currentItem===null) return;
+  data.splice(currentItem,1);
+  localStorage.setItem("galleryDeleted", JSON.stringify(data.map(d=>d.src_file_id)));
+  render();
+  document.getElementById("fs").style.display="none";
+  document.getElementById("fsPanel").classList.remove("show");
+};
+
+// Сортировка
 document.getElementById("btnSorted").onclick = ()=>{ sorted=true; render(); };
 document.getElementById("btnUnsorted").onclick = ()=>{ sorted=false; render(); };
 
 // Workflow кнопка
-const btn = document.querySelector("#workflowBtn button");
-const icon = document.getElementById("btnIcon");
+const btn=document.querySelector("#workflowBtn button");
+const icon=document.getElementById("btnIcon");
 
 btn.onclick = async ()=>{
   icon.textContent="⏳";
   btn.disabled=true;
-  try {
-    await fetch("https://api.github.com/repos/<user>/<repo>/actions/workflows/<workflow_id>/dispatches",{
-      method:"POST",
-      headers:{
-        "Accept":"application/vnd.github+json",
-        "Authorization":"Bearer YOUR_GITHUB_TOKEN"
-      },
-      body:JSON.stringify({ref:"main"})
-    });
-    await new Promise(r=>setTimeout(r,2000));
+  try{
+    await fetch("/runWorkflow",{method:"POST"});
     icon.textContent="✅";
-    setTimeout(()=>{
-      icon.textContent="▶️";
-      btn.disabled=false;
-    },3000);
+    setTimeout(()=>{ icon.textContent="▶️"; btn.disabled=false; },3000);
   } catch(e){
     console.error(e);
     icon.textContent="❌";
-    setTimeout(()=>{
-      icon.textContent="▶️";
-      btn.disabled=false;
-    },3000);
+    setTimeout(()=>{ icon.textContent="▶️"; btn.disabled=false; },3000);
   }
 };
 </script>
