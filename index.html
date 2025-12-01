@@ -3,376 +3,254 @@
 <head>
 <meta charset="utf-8" />
 <meta name="viewport" content="width=device-width,initial-scale=1" />
-<title>Gallery — альбомы и выбор</title>
+<title>Gallery</title>
+
 <style>
-:root{
-  --bg:#0f1720; --panel:#0b1220; --accent:#60a5fa; --muted:#9aa4b2;
-}
-body{
-  margin:0;
-  background:var(--bg);
-  color:#fff;
-  font-family:system-ui,-apple-system,BlinkMacSystemFont,"Segoe UI",Roboto,Arial;
-  -webkit-font-smoothing:antialiased;
-}
-#topBar{
-  display:flex;
-  gap:12px;
-  align-items:center;
-  padding:10px;
-  background:var(--panel);
-  border-bottom:1px solid #071018;
-  position:sticky;
-  top:0;
-  z-index:100;
-}
-#albumsPanel{ display:flex; gap:8px; align-items:center; flex-wrap:wrap; }
-.albumBtn{
-  padding:6px 10px; border-radius:8px; background:#0e1620; cursor:pointer; border:1px solid #122; color:#ddd;
-}
-.albumBtn.active{ background:#111; color:#fff; }
+  body {
+    margin:0;
+    background:#0f1720;
+    color:white;
+    font-family:sans-serif;
+  }
 
-#controls{ margin-left:auto; display:flex; gap:8px; align-items:center; }
-#controls button{ padding:6px 10px; border-radius:8px; background:#0e1620; border:1px solid #122; color:#ddd; cursor:pointer; }
+  header {
+    display:flex;
+    gap:20px;
+    padding:10px;
+    background:#1a2530;
+    position:sticky;
+    top:0;
+  }
 
-#gallery{
-  display:grid;
-  grid-template-columns:repeat(3,1fr);
-  gap:8px;
-  padding:12px;
-  box-sizing:border-box;
-}
-.year{
-  grid-column:1/-1;
-  color:#fff;
-  font-weight:700;
-  padding:6px 2px;
-}
-.item{
-  background:#10151a;
-  border-radius:8px;
-  height:140px;
-  overflow:hidden;
-  position:relative;
-  display:flex;
-  align-items:center;
-  justify-content:center;
-  border:1px solid rgba(255,255,255,0.03);
-  cursor:pointer;
-}
-.item .ph{
-  color:var(--muted);
-  font-size:13px;
-  text-align:center;
-  padding:8px;
-}
-.item img, .item video{ width:100%; height:100%; object-fit:cover; display:block; }
+  header div { cursor:pointer; }
 
-/* selection UI */
-.chk {
-  position:absolute;
-  left:8px; top:8px;
-  width:22px; height:22px;
-  background:rgba(255,255,255,0.95);
-  color:#000; border-radius:4px; display:none; align-items:center; justify-content:center; font-weight:700; z-index:10; font-size:14px;
-}
-.item.selectable .chk{ display:flex; }
-.item.selected{ outline:3px solid rgba(96,165,250,0.18); box-shadow:0 6px 18px rgba(0,0,0,0.6); }
+  #albumsBar {
+    display:flex;
+    gap:12px;
+    padding:10px;
+    background:#111c26;
+    overflow-x:auto;
+    white-space:nowrap;
+  }
 
-/* assign bar */
-#assignBar{
-  position:fixed; left:0; right:0; bottom:0; padding:10px; background:linear-gradient(180deg,#071018,#041018); display:none;
-  border-top:1px solid #072; align-items:center; gap:12px; justify-content:center;
-}
-#assignBar select, #assignBar button{ padding:8px 12px; border-radius:8px; }
+  #albumsBar div {
+    cursor:pointer;
+    padding:6px 12px;
+    background:#1f2c3a;
+    border-radius:6px;
+  }
 
-/* fullscreen */
-#fs{
-  display:none; position:fixed; inset:0; z-index:2000; background:rgba(0,0,0,0.92);
-  justify-content:center; align-items:center; padding:28px; box-sizing:border-box;
-}
-#fs .wrap{ max-width:calc(100vw - 40px); max-height:calc(100vh - 120px); width:100%; display:flex; justify-content:center; align-items:center; }
-#fs img, #fs video{ max-width:100%; max-height:100%; border-radius:8px; }
+  #gallery {
+    display:grid;
+    grid-template-columns:repeat(3,1fr);
+    gap:6px;
+    padding:6px;
+  }
 
-/* console small */
-#note{ margin-left:12px; color:var(--muted); font-size:13px; }
+  .year {
+    grid-column:1/-1;
+    text-align:left;
+    padding:5px;
+    font-size:16px;
+    font-weight:bold;
+  }
+
+  .item {
+    border:2px solid #ffffff33;
+    height:120px;
+    overflow:hidden;
+    border-radius:6px;
+    cursor:pointer;
+    background:#1a2530;
+    display:flex;
+    align-items:center;
+    justify-content:center;
+  }
+  .item img,
+  .item video {
+    width:100%;
+    height:100%;
+    object-fit:cover;
+  }
+
+  #fs {
+    display:none;
+    position:fixed;
+    inset:0;
+    background:rgba(0,0,0,0.95);
+    z-index:2000;
+    justify-content:center;
+    align-items:center;
+    flex-direction:column;
+  }
+  #fs img, #fs video {
+    max-width:100%;
+    max-height:80%;
+  }
+  #fs .date {
+    margin-top:12px;
+    font-size:18px;
+  }
 </style>
 </head>
 <body>
 
-<div id="topBar">
-  <div id="albumsPanel"><!-- albums inserted here --></div>
+<header>
+  <div id="btnSorted">Сортированное</div>
+  <div id="btnUnsorted">Несортированное</div>
+</header>
 
-  <div id="controls">
-    <label style="display:flex;gap:8px;align-items:center;">
-      <input type="checkbox" id="selectMode"> <span style="margin-left:6px;color:var(--muted)">Режим выбора</span>
-    </label>
-    <button id="createAlbum">+ Альбом</button>
-    <button id="clearSelection">Сбросить выделение</button>
-    <div id="note"></div>
-  </div>
-</div>
+<div id="albumsBar"></div>
 
 <div id="gallery"></div>
 
-<div id="assignBar">
-  <span style="color:var(--muted)">Добавить в альбом:</span>
-  <select id="assignSelect"></select>
-  <button id="assignBtn">Добавить</button>
-  <button id="exportPatch">Скопировать patch</button>
-</div>
-
-<div id="fs" onclick="fsClose(event)">
-  <div class="wrap" id="fsWrap"></div>
+<div id="fs">
+  <div id="fsContent"></div>
+  <div class="date" id="fsDate"></div>
 </div>
 
 <script>
-const BOT_TOKEN = "ВАШ_BOT_TOKEN"; // <-- если без backend
-const USE_BACKEND = false;
+const BOT_TOKEN = "ВСТАВЬ_СВОЙ_ТОКЕН_СЮДА"; // ← ВСТАВЬ РЕАЛЬНЫЙ ТОКЕН
+let data = [];
+let sorted = true;
+let currentAlbum = "ALL";
 
-let records = [];
-let albumMap = { all: [] };
-let currentAlbum = 'all';
-let selectMode = false;
-let selected = new Set();
-const fileUrlCache = {};
-
-function note(msg){ document.getElementById('note').textContent = msg || ""; console.log(msg); }
-
-async function loadRecords(){
-  note('Загружаю records.json...');
-  try{
-    const r = await fetch('records.json', {cache:'no-store'});
-    if(!r.ok){ note('records.json не найден'); return; }
-    records = await r.json();
-    note('records.json загружен: ' + records.length + ' записей');
-    buildAlbumMap();
-    renderAlbums();
-    renderAssignList();
-    renderGallery();
-  }catch(e){
-    note('Ошибка загрузки records.json');
-    console.error(e);
-  }
-}
-
-function buildAlbumMap(){
-  albumMap = { all: [] };
-  for(const r of records){
-    albumMap.all.push(r.src_msg_id);
-    const a = r.album || '__noalbum__';
-    if(!albumMap[a]) albumMap[a] = [];
-    albumMap[a].push(r.src_msg_id);
-  }
-}
-
-function renderAlbums(){
-  const panel = document.getElementById('albumsPanel');
-  panel.innerHTML = '';
-  const keys = Object.keys(albumMap).sort((a,b)=>{
-    if(a==='all') return -1;
-    if(b==='all') return 1;
-    if(a==='__noalbum__') return 1;
-    if(b==='__noalbum__') return -1;
-    return a.localeCompare(b);
+// Загружаем JSON
+fetch("records.json")
+  .then(r=>r.json())
+  .then(j=>{
+    data = j;
+    buildAlbums();
+    render();
   });
-  for(const k of keys){
-    const btn = document.createElement('div');
-    btn.className = 'albumBtn' + (k===currentAlbum ? ' active' : '');
-    btn.dataset.album = k;
-    btn.textContent = (k==='__noalbum__' ? 'Без альбома' : (k==='all' ? 'Все' : k));
-    btn.onclick = ()=>{ currentAlbum=k; renderAlbums(); renderGallery(); };
-    panel.appendChild(btn);
-  }
+
+
+// ————————————————
+// СОЗДАНИЕ АЛЬБОМОВ
+// ————————————————
+function buildAlbums() {
+  const bar = document.getElementById("albumsBar");
+  bar.innerHTML = "";
+
+  const albums = new Set(["ALL"]);
+  data.forEach(x=>{
+    if(x.album) albums.add(x.album);
+  });
+
+  albums.forEach(a=>{
+    const div = document.createElement("div");
+    div.textContent = a;
+    div.onclick = ()=>{ currentAlbum=a; render(); };
+    bar.appendChild(div);
+  });
 }
 
-function renderAssignList(){
-  const sel = document.getElementById('assignSelect');
-  sel.innerHTML = '';
-  const keys = Object.keys(albumMap).filter(k=>k!=='all');
-  const createOpt = document.createElement('option'); createOpt.value='__create__'; createOpt.text='-- создать новый альбом --'; sel.appendChild(createOpt);
-  for(const k of keys){
-    const o = document.createElement('option'); o.value=k; o.text = (k==='__noalbum__' ? 'Без альбома' : k); sel.appendChild(o);
-  }
-}
 
-function renderGallery(){
-  note('Рендер галереи (' + (albumMap[currentAlbum] ? albumMap[currentAlbum].length : 0) + ')');
-  const g = document.getElementById('gallery');
-  g.innerHTML = '';
+// ————————————————
+//   РЕНДЕР ГАЛЕРЕИ
+// ————————————————
+function render() {
+  const g = document.getElementById("gallery");
+  g.innerHTML = "";
 
-  const ids = albumMap[currentAlbum] || [];
-  const list = ids.map(id => records.find(r=>r.src_msg_id==id)).filter(Boolean);
-  list.sort((a,b)=> new Date(b.created_at) - new Date(a.created_at));
+  let arr = data;
 
-  let currentYear = null;
-  for(const item of list){
-    const year = item.created_at ? new Date(item.created_at).getFullYear() : '???';
+  // сортировка / несорт
+  arr = sorted ? arr.filter(x=>x.created_at) : arr.filter(x=>!x.created_at);
+
+  // фильтр альбомов
+  if(currentAlbum !== "ALL")
+    arr = arr.filter(x=>x.album === currentAlbum);
+
+  let currentYear = "";
+
+  arr.forEach(item=>{
+    let year = item.created_at ? new Date(item.created_at).getFullYear() : "???";
+
     if(year !== currentYear){
       currentYear = year;
-      const y = document.createElement('div'); y.className='year'; y.textContent = year;
+      const y = document.createElement("div");
+      y.className = "year";
+      y.textContent = year;
       g.appendChild(y);
     }
 
-    const div = document.createElement('div'); div.className='item'; div.dataset.id = item.src_msg_id;
+    const div = document.createElement("div");
+    div.className = "item";
 
-    const chk = document.createElement('div'); chk.className='chk'; chk.textContent = selected.has(item.src_msg_id) ? '✓' : '';
-    chk.onclick = (ev)=>{ ev.stopPropagation(); toggleSelectItem(item.src_msg_id, div); };
-    div.appendChild(chk);
+    const apiUrl = `https://api.telegram.org/bot${BOT_TOKEN}/getFile?file_id=${item.src_file_id}`;
 
-    const ph = document.createElement('div'); ph.className='ph'; ph.textContent = 'Загрузка...';
-    div.appendChild(ph);
+    if(item.type === "photo") {
+      const img = document.createElement("img");
+      fetch(apiUrl)
+        .then(r=>r.json())
+        .then(j=>{
+          if(j.ok) img.src = `https://api.telegram.org/file/bot${BOT_TOKEN}/${j.result.file_path}`;
+        });
+      div.appendChild(img);
 
-    div.onclick = ()=>{ if(selectMode) toggleSelectItem(item.src_msg_id, div); else openFS(item); };
-
-    g.appendChild(div);
-
-    (async ()=>{
-      const url = await resolveMediaUrl(item);
-      if(!url){
-        ph.textContent = 'Файл недоступен';
-        div.style.opacity = 0.6;
-        return;
-      }
-      let mediaEl;
-      if(item.type === 'photo'){
-        mediaEl = document.createElement('img');
-        mediaEl.src = url;
-      } else if(item.type === 'video'){
-        mediaEl = document.createElement('video');
-        mediaEl.src = url;
-        mediaEl.autoplay = true; mediaEl.loop = true; mediaEl.muted = true;
-      } else {
-        ph.textContent = 'Неподдерживаемый тип';
-        return;
-      }
-      if(div.contains(ph)) div.removeChild(ph);
-      div.appendChild(mediaEl);
-      if(selectMode) div.classList.add('selectable');
-      if(selected.has(item.src_msg_id)) { div.classList.add('selected'); div.querySelector('.chk').textContent='✓'; }
-    })();
-  }
-}
-
-async function resolveMediaUrl(item){
-  if(item.download_url) return item.download_url;
-  if(fileUrlCache[item.src_file_id] !== undefined) return fileUrlCache[item.src_file_id];
-
-  if(USE_BACKEND){
-    try{
-      const resp = await fetch('/api/get-file?file_id='+encodeURIComponent(item.src_file_id));
-      if(resp.ok){
-        const j = await resp.json();
-        if(j && j.url){ fileUrlCache[item.src_file_id] = j.url; return j.url; }
-      }
-    }catch(e){ console.warn('backend error', e); }
-    fileUrlCache[item.src_file_id] = null; return null;
-  }
-
-  if(BOT_TOKEN && BOT_TOKEN.trim()!==''){
-    try{
-      const url = `https://api.telegram.org/bot${encodeURIComponent(BOT_TOKEN)}/getFile?file_id=${encodeURIComponent(item.src_file_id)}`;
-      const r = await fetch(url);
-      if(!r.ok){ fileUrlCache[item.src_file_id]=null; return null; }
-      const j = await r.json();
-      if(j && j.ok && j.result && j.result.file_path){
-        const fileUrl = `https://api.telegram.org/file/bot${encodeURIComponent(BOT_TOKEN)}/${j.result.file_path}`;
-        fileUrlCache[item.src_file_id] = fileUrl;
-        return fileUrl;
-      }
-    }catch(e){ console.warn('getFile exception', e); fileUrlCache[item.src_file_id]=null; return null; }
-  }
-
-  fileUrlCache[item.src_file_id] = null;
-  return null;
-}
-
-async function openFS(item){
-  const fs = document.getElementById('fs');
-  const wrap = document.getElementById('fsWrap');
-  wrap.innerHTML = '';
-  const url = await resolveMediaUrl(item);
-  if(!url){ wrap.textContent = 'Файл недоступен'; fs.style.display='flex'; return; }
-  if(item.type === 'photo'){
-    const img = document.createElement('img'); img.src = url; wrap.appendChild(img);
-  } else if(item.type === 'video'){
-    const v = document.createElement('video'); v.src = url; v.controls=true; v.autoplay=true; wrap.appendChild(v);
-  }
-  fs.style.display = 'flex';
-}
-function fsClose(e){ if(e.target.id==='fs') document.getElementById('fs').style.display='none'; }
-
-function toggleSelectItem(id, divEl){
-  if(selected.has(id)){
-    selected.delete(id); divEl.classList.remove('selected'); divEl.querySelector('.chk') && (divEl.querySelector('.chk').textContent='');
-  } else {
-    selected.add(id); divEl.classList.add('selected'); divEl.querySelector('.chk') && (divEl.querySelector('.chk').textContent='✓');
-  }
-  document.getElementById('assignBar').style.display = (selected.size>0 ? 'flex' : 'none');
-}
-
-document.getElementById('createAlbum').addEventListener('click', ()=>{
-  const name = prompt('Название нового альбома:');
-  if(!name) return;
-  if(albumMap[name]) { alert('Альбом уже существует'); return; }
-  albumMap[name] = [];
-  renderAlbums();
-  renderAssignList();
-  note('Альбом создан: ' + name);
-});
-
-document.getElementById('assignBtn').addEventListener('click', ()=>{
-  const sel = document.getElementById('assignSelect');
-  let val = sel.value;
-  if(val === '__create__'){
-    const nm = prompt('Название нового альбома:');
-    if(!nm) return;
-    if(!albumMap[nm]) albumMap[nm] = [];
-    val = nm;
-    renderAlbums(); renderAssignList();
-  }
-  if(!val || val==='all' || val==='__create__') return;
-  const patched = [];
-  selected.forEach(id=>{
-    const rec = records.find(r=>r.src_msg_id==id);
-    if(rec){
-      rec.album = val;
-      if(!albumMap[val]) albumMap[val]=[];
-      if(!albumMap[val].includes(id)) albumMap[val].push(id);
-      patched.push({ src_msg_id: id, album: val });
+    } else if(item.type === "video") {
+      const v = document.createElement("video");
+      v.muted = true;
+      v.loop = true;
+      v.autoplay = true;
+      fetch(apiUrl)
+        .then(r=>r.json())
+        .then(j=>{
+          if(j.ok) v.src = `https://api.telegram.org/file/bot${BOT_TOKEN}/${j.result.file_path}`;
+        });
+      div.appendChild(v);
     }
+
+    div.onclick = ()=>openFS(item);
+    g.appendChild(div);
   });
-  if(albumMap['__noalbum__']) albumMap['__noalbum__'] = albumMap['__noalbum__'].filter(x=>!selected.has(x));
-  selected.clear();
-  document.getElementById('assignBar').style.display = 'none';
-  renderAlbums(); renderAssignList(); renderGallery();
-  const txt = JSON.stringify(patched, null, 2);
-  navigator.clipboard?.writeText(txt).then(()=> alert('Patch скопирован в буфер обмена'), ()=> alert('Patch (не удалось скопировать)\n\n'+txt));
-});
+}
 
-document.getElementById('exportPatch').addEventListener('click', ()=>{
-  const patched = [];
-  selected.forEach(id=>{
-    const rec = records.find(r=>r.src_msg_id==id);
-    if(rec) patched.push({ src_msg_id: id, album: rec.album || null });
-  });
-  const txt = JSON.stringify(patched, null, 2);
-  navigator.clipboard?.writeText(txt).then(()=> alert('Patch скопирован'), ()=> alert('Не удалось копировать\n\n'+txt));
-});
 
-document.getElementById('clearSelection').addEventListener('click', ()=>{
-  selected.clear();
-  document.getElementById('assignBar').style.display='none';
-  document.querySelectorAll('.item').forEach(d=>{ d.classList.remove('selected'); d.querySelector('.chk') && (d.querySelector('.chk').textContent=''); });
-});
+// ————————————————
+// FULLSCREEN PREVIEW
+// ————————————————
+function openFS(item){
+  const fs = document.getElementById("fs");
+  const c = document.getElementById("fsContent");
+  const d = document.getElementById("fsDate");
 
-document.getElementById('selectMode').addEventListener('change', (e)=>{
-  selectMode = e.target.checked;
-  document.querySelectorAll('.item').forEach(d=>{ if(selectMode) d.classList.add('selectable'); else { d.classList.remove('selectable'); d.classList.remove('selected'); d.querySelector('.chk') && (d.querySelector('.chk').textContent=''); } });
-  if(!selectMode){ selected.clear(); document.getElementById('assignBar').style.display='none'; }
-});
+  c.innerHTML = "";
+  d.textContent = item.created_at ? new Date(item.created_at).toLocaleString() : "";
 
-loadRecords();
+  const apiUrl = `https://api.telegram.org/bot${BOT_TOKEN}/getFile?file_id=${item.src_file_id}`;
+
+  if(item.type === "photo") {
+    const img = document.createElement("img");
+    fetch(apiUrl)
+      .then(r=>r.json())
+      .then(j=>{
+        img.src = `https://api.telegram.org/file/bot${BOT_TOKEN}/${j.result.file_path}`;
+      });
+    c.appendChild(img);
+
+  } else if(item.type === "video") {
+    const v = document.createElement("video");
+    v.controls = true;
+    v.autoplay = true;
+    fetch(apiUrl)
+      .then(r=>r.json())
+      .then(j=>{
+        v.src = `https://api.telegram.org/file/bot${BOT_TOKEN}/${j.result.file_path}`;
+      });
+    c.appendChild(v);
+  }
+
+  fs.style.display = "flex";
+}
+
+document.getElementById("fs").onclick = ()=>(
+  document.getElementById("fs").style.display="none"
+);
+
+document.getElementById("btnSorted").onclick = ()=>{ sorted=true; render(); };
+document.getElementById("btnUnsorted").onclick = ()=>{ sorted=false; render(); };
 </script>
 
 </body>
