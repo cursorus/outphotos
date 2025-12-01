@@ -72,13 +72,15 @@ def ffprobe_creation_time(path):
     try:
         out = subprocess.check_output([
             "ffprobe", "-v", "error",
-            "-select_streams", "v:0",
+            " -select_streams", "v:0",
             "-show_entries", "format_tags=creation_time",
             "-of", "default=noprint_wrappers=1:nokey=1",
             path
         ], stderr=subprocess.DEVNULL).decode().strip()
         if out:
-            for fmt in ("%Y-%m-%dT%H:%M:%S.%fZ","%Y-%m-%dT%H:%M:%SZ","%Y-%m-%d %H:%M:%S"):
+            for fmt in ("%Y-%m-%dT%H:%M:%S.%fZ",
+                        "%Y-%m-%dT%H:%M:%SZ",
+                        "%Y-%m-%d %H:%M:%S"):
                 try:
                     return datetime.strptime(out, fmt)
                 except Exception:
@@ -102,11 +104,11 @@ def process_update(u, records):
     file_id = None
     ftype = None
 
-    # simple extension lists for fallback detection
+    # simple extension lists
     image_exts = (".jpg", ".jpeg", ".png", ".gif", ".heic", ".webp", ".tiff", ".bmp")
     video_exts = (".mp4", ".mov", ".mkv", ".webm", ".avi", ".flv", ".3gp", ".mpeg", ".mpg")
 
-    # Prefer explicit fields
+    # identify media
     if message.get("photo"):
         file_id = message["photo"][-1]["file_id"]
         ftype = "photo"
@@ -114,7 +116,6 @@ def process_update(u, records):
         file_id = message["video"]["file_id"]
         ftype = "video"
     elif message.get("animation"):
-        # GIFs or animations
         file_id = message["animation"]["file_id"]
         ftype = "video"
     elif message.get("document"):
@@ -162,24 +163,24 @@ def process_update(u, records):
     except:
         pass
 
-rec = {
-    "src_msg_id": mid,
-    "src_file_id": file_id,
-    "type": ftype,
-    "created_at": safe_iso(dt),
-    # Добавляем прямую ссылку для фронтенда
-    "src": f"https://api.telegram.org/file/bot{BOT_TOKEN}/{file_path}"
-}
-records.insert(0, rec)
-print("Added:", rec)
+    # ✅ тут правильное место для записи
+    rec = {
+        "src_msg_id": mid,
+        "src_file_id": file_id,
+        "type": ftype,
+        "created_at": safe_iso(dt),
+        "src": f"https://api.telegram.org/file/bot{BOT_TOKEN}/{file_path}"
+    }
+    records.insert(0, rec)
+    print("Added:", rec)
+
 
 def clean_records(records):
-    """Удаляем устаревшие файлы из records, которых больше нет в Telegram"""
     new_records = []
     for r in records:
         try:
             resp = requests.get(f"{API}/getFile", params={"file_id": r["src_file_id"]}, timeout=10).json()
-            if resp.get("ok") and resp.get("result") and resp["result"].get("file_path"):
+            if resp.get("ok") and resp["result"].get("file_path"):
                 new_records.append(r)
         except:
             continue
@@ -192,7 +193,6 @@ def main():
     state = load_json(STATE_FILE, {"update_offset": None})
     records = load_json(RECORDS_FILE, [])
 
-    # Удаляем устаревшие файлы
     records = clean_records(records)
 
     updates = get_updates(state.get("update_offset"))
