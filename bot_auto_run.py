@@ -162,14 +162,18 @@ def process_update(u, records):
     except:
         pass
 
-    rec = {
-        "src_msg_id": mid,
-        "src_file_id": file_id,
-        "type": ftype,
-        "created_at": safe_iso(dt)
-    }
-    records.insert(0, rec)
-    print("Added:", rec)
+    # ...
+rec = {
+    "src_msg_id": mid,
+    "src_file_id": file_id,
+    "type": ftype,
+    "created_at": safe_iso(dt),
+    # ← добавляем прямую ссылку для фронтенда
+    "src": f"https://api.telegram.org/file/bot{BOT_TOKEN}/{file_path}"
+}
+records.insert(0, rec)
+print("Added:", rec)
+# ...
 
 def clean_records(records):
     """Удаляем устаревшие файлы из records, которых больше нет в Telegram"""
