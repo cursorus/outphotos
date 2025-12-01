@@ -15,14 +15,16 @@
 
   header {
     display:flex;
-    gap:20px;
+    justify-content:center;
     padding:10px;
     background:#1a2530;
     position:sticky;
     top:0;
   }
 
-  header div { cursor:pointer; }
+  header div {
+    font-weight:bold;
+  }
 
   #albumsBar {
     display:flex;
@@ -96,8 +98,7 @@
 <body>
 
 <header>
-  <div id="btnSorted">Сортированное</div>
-  <div id="btnUnsorted">Несортированное</div>
+  <div>outphotos</div>
 </header>
 
 <div id="albumsBar"></div>
@@ -110,10 +111,10 @@
 </div>
 
 <script>
-// Плейсхолдер вместо реального токена
-const BOT_TOKEN = "{{BOT_TOKEN}}"; 
+// **Теперь токен не нужен на фронтенде**
+// Action должен сгенерировать records.json с прямыми ссылками на файлы
+
 let data = [];
-let sorted = true;
 let currentAlbum = "ALL";
 
 // Загружаем JSON
@@ -125,9 +126,7 @@ fetch("records.json")
     render();
   });
 
-// ————————————————
 // СОЗДАНИЕ АЛЬБОМОВ
-// ————————————————
 function buildAlbums() {
   const bar = document.getElementById("albumsBar");
   bar.innerHTML = "";
@@ -145,19 +144,13 @@ function buildAlbums() {
   });
 }
 
-// ————————————————
-//   РЕНДЕР ГАЛЕРЕИ
-// ————————————————
+// РЕНДЕР ГАЛЕРЕИ
 function render() {
   const g = document.getElementById("gallery");
   g.innerHTML = "";
 
   let arr = data;
 
-  // сортировка / несорт
-  arr = sorted ? arr.filter(x=>x.created_at) : arr.filter(x=>!x.created_at);
-
-  // фильтр альбомов
   if(currentAlbum !== "ALL")
     arr = arr.filter(x=>x.album === currentAlbum);
 
@@ -177,15 +170,9 @@ function render() {
     const div = document.createElement("div");
     div.className = "item";
 
-    const apiUrl = `https://api.telegram.org/bot${BOT_TOKEN}/getFile?file_id=${item.src_file_id}`;
-
     if(item.type === "photo") {
       const img = document.createElement("img");
-      fetch(apiUrl)
-        .then(r=>r.json())
-        .then(j=>{
-          if(j.ok) img.src = `https://api.telegram.org/file/bot${BOT_TOKEN}/${j.result.file_path}`;
-        });
+      img.src = item.src; // прямой URL, Action уже подставил токен
       div.appendChild(img);
 
     } else if(item.type === "video") {
@@ -193,11 +180,7 @@ function render() {
       v.muted = true;
       v.loop = true;
       v.autoplay = true;
-      fetch(apiUrl)
-        .then(r=>r.json())
-        .then(j=>{
-          if(j.ok) v.src = `https://api.telegram.org/file/bot${BOT_TOKEN}/${j.result.file_path}`;
-        });
+      v.src = item.src; // прямой URL
       div.appendChild(v);
     }
 
@@ -206,9 +189,7 @@ function render() {
   });
 }
 
-// ————————————————
 // FULLSCREEN PREVIEW
-// ————————————————
 function openFS(item){
   const fs = document.getElementById("fs");
   const c = document.getElementById("fsContent");
@@ -217,26 +198,16 @@ function openFS(item){
   c.innerHTML = "";
   d.textContent = item.created_at ? new Date(item.created_at).toLocaleString() : "";
 
-  const apiUrl = `https://api.telegram.org/bot${BOT_TOKEN}/getFile?file_id=${item.src_file_id}`;
-
   if(item.type === "photo") {
     const img = document.createElement("img");
-    fetch(apiUrl)
-      .then(r=>r.json())
-      .then(j=>{
-        img.src = `https://api.telegram.org/file/bot${BOT_TOKEN}/${j.result.file_path}`;
-      });
+    img.src = item.src;
     c.appendChild(img);
 
   } else if(item.type === "video") {
     const v = document.createElement("video");
     v.controls = true;
     v.autoplay = true;
-    fetch(apiUrl)
-      .then(r=>r.json())
-      .then(j=>{
-        v.src = `https://api.telegram.org/file/bot${BOT_TOKEN}/${j.result.file_path}`;
-      });
+    v.src = item.src;
     c.appendChild(v);
   }
 
@@ -246,9 +217,6 @@ function openFS(item){
 document.getElementById("fs").onclick = ()=>(
   document.getElementById("fs").style.display="none"
 );
-
-document.getElementById("btnSorted").onclick = ()=>{ sorted=true; render(); };
-document.getElementById("btnUnsorted").onclick = ()=>{ sorted=false; render(); };
 </script>
 
 </body>
