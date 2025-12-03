@@ -1,5 +1,12 @@
 [
   {
+    "src_msg_id": 52,
+    "src_file_id": "BQACAgIAAyEFAATE9VMkAAM0aTBjSacOySK1ypSqe-JhcitNGbQAAuOZAAL_G4BJ4pDI-H8txoM2BA",
+    "type": "photo",
+    "created_at": "2025-12-03T16:21:33Z",
+    "src": "https://api.telegram.org/file/bot8352798938:AAGnDHDe2aIrqxbqsY-9U_3I30L1qxoVAYA/documents/file_36.JPG"
+  },
+  {
     "src_msg_id": 49,
     "src_file_id": "AgACAgIAAyEFAATE9VMkAAMsaSx6SXJxfhQ2lbBPIU0yyw88plIAAvwSaxsY8GFJU1XG3nOgjTYBAAMCAAN5AAM2BA",
     "type": "photo",
