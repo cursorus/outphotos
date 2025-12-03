@@ -8,7 +8,7 @@
 <style>
   body {
     margin:0;
-    background:#0f1720;
+    background:#1c1c1c;
     color:white;
     font-family:sans-serif;
   }
@@ -17,7 +17,7 @@
     display:flex;
     justify-content:center;
     padding:10px;
-    background:#1a2530;
+    background:#1c1c1c;
     position:sticky;
     top:0;
   }
@@ -30,7 +30,7 @@
     display:flex;
     gap:12px;
     padding:10px;
-    background:#111c26;
+    background:#1c1c1c;
     overflow-x:auto;
     white-space:nowrap;
   }
@@ -38,7 +38,7 @@
   #albumsBar div {
     cursor:pointer;
     padding:6px 12px;
-    background:#1f2c3a;
+    background:#1c1c1c;
     border-radius:6px;
   }
 
@@ -63,7 +63,7 @@
     overflow:hidden;
     border-radius:6px;
     cursor:pointer;
-    background:#1a2530;
+    background:#161616;
     display:flex;
     align-items:center;
     justify-content:center;
@@ -111,9 +111,7 @@
 </div>
 
 <script>
-// **Теперь токен не нужен на фронтенде**
-// Action должен сгенерировать records.json с прямыми ссылками на файлы
-
+// Фронтенду токен не нужен — src уже прямые ссылки
 let data = [];
 let currentAlbum = "ALL";
 
@@ -170,9 +168,10 @@ function render() {
     const div = document.createElement("div");
     div.className = "item";
 
+    // ---- ДОБАВЛЕНА ПОДДЕРЖКА ВИДЕО-ФАЙЛОВ ----
     if(item.type === "photo") {
       const img = document.createElement("img");
-      img.src = item.src; // прямой URL, Action уже подставил токен
+      img.src = item.src;
       div.appendChild(img);
 
     } else if(item.type === "video") {
@@ -180,9 +179,19 @@ function render() {
       v.muted = true;
       v.loop = true;
       v.autoplay = true;
-      v.src = item.src; // прямой URL
+      v.src = item.src;
+      div.appendChild(v);
+
+    } else if(item.type === "document" && item.mime_type && item.mime_type.startsWith("video/")) {
+      // ВИДЕО, ОТПРАВЛЕННОЕ ФАЙЛОМ
+      const v = document.createElement("video");
+      v.muted = true;
+      v.loop = true;
+      v.autoplay = true;
+      v.src = item.src;
       div.appendChild(v);
     }
+    // ------------------------------------------
 
     div.onclick = ()=>openFS(item);
     g.appendChild(div);
@@ -198,6 +207,7 @@ function openFS(item){
   c.innerHTML = "";
   d.textContent = item.created_at ? new Date(item.created_at).toLocaleString() : "";
 
+  // ---- ПОДДЕРЖКА ВИДЕО-ФАЙЛОВ ----
   if(item.type === "photo") {
     const img = document.createElement("img");
     img.src = item.src;
@@ -209,7 +219,15 @@ function openFS(item){
     v.autoplay = true;
     v.src = item.src;
     c.appendChild(v);
+
+  } else if(item.type === "document" && item.mime_type && item.mime_type.startsWith("video/")) {
+    const v = document.createElement("video");
+    v.controls = true;
+    v.autoplay = true;
+    v.src = item.src;
+    c.appendChild(v);
   }
+  // ---------------------------------
 
   fs.style.display = "flex";
 }
