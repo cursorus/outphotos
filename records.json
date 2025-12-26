@@ -63,20 +63,6 @@
     "src": "https://api.telegram.org/file/bot8352798938:AAGnDHDe2aIrqxbqsY-9U_3I30L1qxoVAYA/photos/file_37.jpg"
   },
   {
-    "src_msg_id": 55,
-    "src_file_id": "BAACAgIAAyEFAATE9VMkAAM3aTBj7fz5Pmh3SaslZ2kRB7zFKv8AAvGZAAL_G4BJgVBGPlmRLaM2BA",
-    "type": "video",
-    "created_at": "2025-12-03T16:24:13Z",
-    "src": "https://api.telegram.org/file/bot8352798938:AAGnDHDe2aIrqxbqsY-9U_3I30L1qxoVAYA/videos/file_38.MP4"
-  },
-  {
-    "src_msg_id": 54,
-    "src_file_id": "BQACAgIAAyEFAATE9VMkAAMqaSxoGJkR70ENnE-z_V1mpabM7NwAAgZTAAKFWelIJ5nd2EgTacw2BA",
-    "type": "photo",
-    "created_at": "2025-12-03T16:24:10Z",
-    "src": "https://api.telegram.org/file/bot8352798938:AAGnDHDe2aIrqxbqsY-9U_3I30L1qxoVAYA/documents/file_31.png"
-  },
-  {
     "src_msg_id": 53,
     "src_file_id": "AgACAgIAAyEFAATE9VMkAAM1aTBj2U02T0OBJ4W05d2-5zwULrIAAuEPaxvCPXlJ9YGDENVUWfUBAAMCAAN5AAM2BA",
     "type": "photo",
