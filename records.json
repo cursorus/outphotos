@@ -1,38 +1,10 @@
 [
   {
-    "src_msg_id": 69,
-    "src_file_id": "AgACAgIAAyEFAATE9VMkAANFaTVy9q-XM58Er3kmGH89RC_yFCkAAt4MaxtH9bBJ9_UAASdzEmYiAQADAgADeQADNgQ",
-    "type": "photo",
-    "created_at": "2025-12-07T12:52:45Z",
-    "src": "https://api.telegram.org/file/bot8352798938:AAGnDHDe2aIrqxbqsY-9U_3I30L1qxoVAYA/photos/file_52.jpg"
-  },
-  {
-    "src_msg_id": 68,
-    "src_file_id": "BQACAgIAAyEFAATE9VMkAANEaTVy9aTf-gZ64suVsLpKIfIOOQIAAjeKAAJH9bBJyTgZWZlgvsc2BA",
-    "type": "photo",
-    "created_at": "2024-12-02T21:19:51Z",
-    "src": "https://api.telegram.org/file/bot8352798938:AAGnDHDe2aIrqxbqsY-9U_3I30L1qxoVAYA/documents/file_51.JPG"
-  },
-  {
-    "src_msg_id": 67,
-    "src_file_id": "BQACAgIAAyEFAATE9VMkAANDaTVy9VXawbiATJK37GDvh9Rxt8kAAjWKAAJH9bBJUqsMK6k09BY2BA",
-    "type": "photo",
-    "created_at": "2024-12-02T23:38:38Z",
-    "src": "https://api.telegram.org/file/bot8352798938:AAGnDHDe2aIrqxbqsY-9U_3I30L1qxoVAYA/documents/file_50.JPG"
-  },
-  {
     "src_msg_id": 66,
     "src_file_id": "BQACAgIAAyEFAATE9VMkAANCaTVy9S94hlqZznN_ch2PQK2shI8AAjKKAAJH9bBJ6FskyWBry8M2BA",
     "type": "photo",
     "created_at": "2024-12-02T23:38:41Z",
     "src": "https://api.telegram.org/file/bot8352798938:AAGnDHDe2aIrqxbqsY-9U_3I30L1qxoVAYA/documents/file_49.JPG"
-  },
-  {
-    "src_msg_id": 65,
-    "src_file_id": "BQACAgIAAyEFAATE9VMkAANBaTVy9WBYJ6_Mto-edHZncxL_mh8AAjGKAAJH9bBJkqx6_MUtzTs2BA",
-    "type": "photo",
-    "created_at": "2024-12-02T23:38:44Z",
-    "src": "https://api.telegram.org/file/bot8352798938:AAGnDHDe2aIrqxbqsY-9U_3I30L1qxoVAYA/documents/file_48.JPG"
   },
   {
     "src_msg_id": 64,
