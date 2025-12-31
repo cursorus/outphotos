@@ -1,0 +1,131 @@
+<!doctype html>
+<html lang="ru">
+<head>
+<meta charset="utf-8" />
+<meta name="viewport" content="width=device-width,initial-scale=1" />
+<title>Gallery</title>
+<style>
+  body { margin:0; background:#1c1c1c; color:white; font-family:sans-serif; }
+  header { display:flex; justify-content:center; padding:10px; background:#1c1c1c; position:sticky; top:0; }
+  header div { font-weight:bold; }
+  #albumsBar { display:flex; gap:12px; padding:10px; background:#1c1c1c; overflow-x:auto; white-space:nowrap; }
+  #albumsBar div { cursor:pointer; padding:6px 12px; background:#1c1c1c; border-radius:6px; }
+  #gallery { display:grid; grid-template-columns:repeat(3,1fr); gap:6px; padding:6px; }
+  .year { grid-column:1/-1; text-align:left; padding:5px; font-size:16px; font-weight:bold; }
+  .item { border:2px solid #ffffff33; height:120px; overflow:hidden; border-radius:6px; cursor:pointer; background:#161616; display:flex; align-items:center; justify-content:center; }
+  .item img, .item video { width:100%; height:100%; object-fit:cover; }
+  #fs { display:none; position:fixed; inset:0; background:rgba(0,0,0,0.95); z-index:2000; justify-content:center; align-items:center; flex-direction:column; }
+  #fs img, #fs video { max-width:100%; max-height:80%; }
+  #fs .date { margin-top:12px; font-size:18px; }
+</style>
+</head>
+<body>
+
+<header>
+  <div>outphotos</div>
+</header>
+
+<div id="albumsBar"></div>
+<div id="gallery"></div>
+<div id="fs">
+  <div id="fsContent"></div>
+  <div class="date" id="fsDate"></div>
+</div>
+
+<script>
+let data = [];
+let currentAlbum = "ALL";
+
+// Загружаем JSON
+fetch("records.json")
+  .then(r=>r.json())
+  .then(j=>{
+    data = j;
+    buildAlbums();
+    render();
+  });
+
+// СОЗДАНИЕ АЛЬБОМОВ
+function buildAlbums() {
+  const bar = document.getElementById("albumsBar");
+  bar.innerHTML = "";
+  const albums = new Set(["ALL"]);
+  data.forEach(x=>{ if(x.album) albums.add(x.album); });
+  albums.forEach(a=>{
+    const div = document.createElement("div");
+    div.textContent = a;
+    div.onclick = ()=>{ currentAlbum=a; render(); };
+    bar.appendChild(div);
+  });
+}
+
+// РЕНДЕР ГАЛЕРЕИ
+function render() {
+  const g = document.getElementById("gallery");
+  g.innerHTML = "";
+  let arr = data;
+  if(currentAlbum !== "ALL") arr = arr.filter(x=>x.album===currentAlbum);
+  let currentYear = "";
+  arr.forEach(item=>{
+    let year = item.created_at ? new Date(item.created_at).getFullYear() : "???";
+    if(year!==currentYear){
+      currentYear=year;
+      const y=document.createElement("div");
+      y.className="year";
+      y.textContent=year;
+      g.appendChild(y);
+    }
+    const div=document.createElement("div");
+    div.className="item";
+
+    // --- 100% показ видео-файлов ---
+    if(item.type==="photo"){
+      const img=document.createElement("img"); img.src=item.src; div.appendChild(img);
+    } else if(item.type==="video"){
+      const v=document.createElement("video"); v.muted=true; v.loop=true; v.autoplay=true; v.src=item.src; div.appendChild(v);
+    } else if(item.type==="document"){
+      // Проверяем расширение файла, если это видео — вставляем video
+      const ext = item.file_name ? item.file_name.split('.').pop().toLowerCase() : "";
+      if(["mp4","mov","webm","mkv"].includes(ext)){
+        const v=document.createElement("video"); v.muted=true; v.loop=true; v.autoplay=true; v.src=item.src; div.appendChild(v);
+      } else {
+        const p=document.createElement("p"); p.textContent="Документ"; div.appendChild(p);
+      }
+    }
+
+    div.onclick=()=>openFS(item);
+    g.appendChild(div);
+  });
+}
+
+// FULLSCREEN PREVIEW
+function openFS(item){
+  const fs=document.getElementById("fs");
+  const c=document.getElementById("fsContent");
+  const d=document.getElementById("fsDate");
+  c.innerHTML="";
+  d.textContent=item.created_at?new Date(item.created_at).toLocaleString():"";
+
+  if(item.type==="photo"){
+    const img=document.createElement("img"); img.src=item.src; c.appendChild(img);
+  } else if(item.type==="video"){
+    const v=document.createElement("video"); v.controls=true; v.autoplay=true; v.src=item.src; c.appendChild(v);
+  } else if(item.type==="document"){
+    const ext = item.file_name ? item.file_name.split('.').pop().toLowerCase() : "";
+    if(["mp4","mov","webm","mkv"].includes(ext)){
+      const v=document.createElement("video"); v.controls=true; v.autoplay=true; v.src=item.src; c.appendChild(v);
+    } else {
+      const p=document.createElement("p"); p.textContent="Документ"; c.appendChild(p);
+    }
+  }
+
+  fs.style.display="flex";
+}
+
+document.getElementById("fs").onclick=()=>(
+  document.getElementById("fs").style.display="none"
+);
+</script>
+
+</body>
+</html>
